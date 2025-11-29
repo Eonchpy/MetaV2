@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Select, Button, message, Table, Tag, Space, Input } from 'antd';
+import { Modal, Form, Select, Button, message, Table, Tag, Space, Input, Popconfirm } from 'antd';
 import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { tableMetadataApi, lineageApi } from '../services/api';
 
@@ -41,9 +41,8 @@ const TableLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh }) => {
       setLoading(true);
       // 添加时间戳避免缓存问题
       const response = await tableMetadataApi.getAll({ limit: 1000, _t: Date.now() });
-      // 由于使用了axios拦截器，响应已经是response.data，直接使用即可
-      // 确保是数组格式并过滤可能的无效数据
-      const tableData = Array.isArray(response) ? response : [];
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const tableData = Array.isArray(response) ? response : (response.data || []);
       // 只保留有效且存在的表
       const validTables = tableData.filter(table => table && table.id && table.name);
       setTables(validTables);
@@ -58,10 +57,9 @@ const TableLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh }) => {
   // 加载已有的血缘关系
   const loadExistingRelations = async () => {
     try {
-      // 由于axios拦截器已经处理了response.data，直接使用响应数据
       const response = await lineageApi.getAllTableRelations({ limit: 1000 });
-      // 确保是数组格式并过滤可能的无效数据
-      const relationData = Array.isArray(response) ? response : [];
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const relationData = Array.isArray(response) ? response : (response.data || []);
       // 过滤掉无效的血缘关系记录
       const validRelations = relationData.filter(relation => 
         relation && relation.id && relation.target_table_id && Array.isArray(relation.source_table_ids)
@@ -144,6 +142,44 @@ const TableLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh }) => {
     }
   };
 
+  // 删除表血缘关系
+  const handleDeleteRelation = async (relationId, targetTableId) => {
+    try {
+      setSaving(true);
+      
+      // 前置校验：检查是否存在列级血缘关系
+      const columnRelationsResponse = await lineageApi.getAllColumnRelations({ lineage_relation_id: relationId });
+      const columnRelations = Array.isArray(columnRelationsResponse) ? columnRelationsResponse : (columnRelationsResponse.data || []);
+      
+      if (columnRelations.length > 0) {
+        // 存在列级血缘关系，获取所有相关列名
+        const columnNames = [...new Set(columnRelations.map(relation => {
+          return relation.source_column?.name || relation.target_column?.name || '未知列';
+        }))];
+        
+        message.error(`存在列级血缘不允许删除，相关列：${columnNames.join(', ')}`);
+        return;
+      }
+      
+      // 不存在列级血缘关系，可以删除
+      await lineageApi.deleteTableRelation(relationId);
+      message.success('表血缘关系删除成功');
+      
+      // 重新加载血缘关系和表数据
+      await loadExistingRelations();
+      await loadTables();
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('删除表血缘关系失败:', error);
+      message.error(`删除失败：${error.response?.data?.detail || error.message || '未知错误'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // 获取表名
   const getTableName = (tableId) => {
     const table = tables.find(t => t.id === tableId);
@@ -185,6 +221,28 @@ const TableLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh }) => {
       dataIndex: 'created_at',
       key: 'created_at',
       render: (createdAt) => new Date(createdAt).toLocaleString()
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Popconfirm
+          title="确定要删除这条表血缘关系吗？"
+          onConfirm={() => handleDeleteRelation(record.id, record.target_table_id)}
+          okText="确定"
+          cancelText="取消"
+          placement="topRight"
+        >
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined />}
+            size="small"
+          >
+            删除
+          </Button>
+        </Popconfirm>
+      )
     }
   ];
 

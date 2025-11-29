@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Select, Button, message, Table, Tag, Space, Input, Row, Col, Spin } from 'antd';
-import { SaveOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Modal, Form, Select, Button, message, Table, Tag, Space, Input, Row, Col, Spin, Popconfirm } from 'antd';
+import { SaveOutlined, ReloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { tableMetadataApi, columnMetadataApi, lineageApi } from '../services/api';
 
 const { Option } = Select;
@@ -48,9 +48,8 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
       setLoading(true);
       // 添加时间戳避免缓存问题
       const response = await tableMetadataApi.getAll({ limit: 1000, _t: Date.now() });
-      // 由于使用了axios拦截器，响应已经是response.data，直接使用即可
-      // 确保是数组格式并过滤可能的无效数据
-      const tableData = Array.isArray(response) ? response : [];
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const tableData = Array.isArray(response) ? response : (response.data || []);
       // 只保留有效且存在的表
       const validTables = tableData.filter(table => table && table.id && table.name);
       setTables(validTables);
@@ -71,8 +70,8 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
         params.lineage_relation_id = tableRelation.id;
       }
       const response = await lineageApi.getAllColumnRelations(params);
-      // 确保数据格式正确处理
-      const relations = response || [];
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const relations = Array.isArray(response) ? response : (response.data || []);
       console.log('获取到的字段血缘关系数据:', relations);
       setLineageRelations(relations);
     } catch (error) {
@@ -80,7 +79,7 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
       message.error('加载已有的字段血缘关系失败');
     }
   };
-  
+
   // 检查并获取表级血缘关系
   const checkTableRelation = async (sourceTableId, targetTableId) => {
     if (!sourceTableId || !targetTableId) return false;
@@ -90,8 +89,8 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
       // 先尝试通过targetTableId查找
       let relations = await lineageApi.getAllTableRelations({ target_table_id: targetTableId });
       
-      // 确保relations是数组格式
-      relations = Array.isArray(relations) ? relations : [];
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      relations = Array.isArray(relations) ? relations : (relations.data || []);
       
       // 查找包含指定源表和目标表的关系
       const foundRelation = relations.find(relation => 
@@ -128,10 +127,12 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
     try {
       console.log('正在加载源表列，表ID:', tableId);
       const response = await columnMetadataApi.getByTable(tableId);
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const columnsData = Array.isArray(response) ? response : (response.data || []);
       // 创建独立的数据副本，避免引用共享问题
-      const columnsData = response ? [...response] : [];
-      console.log('源表列数据:', columnsData.length, '个字段');
-      setSourceColumns(columnsData);
+      const copiedColumns = [...columnsData];
+      console.log('源表列数据:', copiedColumns.length, '个字段');
+      setSourceColumns(copiedColumns);
       form.resetFields(['source_column']);
     } catch (error) {
       console.error('加载源表列失败:', error);
@@ -149,10 +150,12 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
     try {
       console.log('正在加载目标表列，表ID:', tableId);
       const response = await columnMetadataApi.getByTable(tableId);
+      // 处理API响应，支持两种格式：直接返回数组或包含data字段的对象
+      const columnsData = Array.isArray(response) ? response : (response.data || []);
       // 创建独立的数据副本，避免引用共享问题
-      const columnsData = response ? [...response] : [];
-      console.log('目标表列数据:', columnsData.length, '个字段');
-      setTargetColumns(columnsData);
+      const copiedColumns = [...columnsData];
+      console.log('目标表列数据:', copiedColumns.length, '个字段');
+      setTargetColumns(copiedColumns);
       form.resetFields(['target_column']);
     } catch (error) {
       console.error('加载目标表列失败:', error);
@@ -252,6 +255,26 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
         console.error('请求数据:', relationData);
       }
       message.error(`保存字段血缘关系失败: ${error.response?.data?.detail || error.message || '未知错误'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // 删除字段血缘关系
+  const handleDeleteRelation = async (relationId) => {
+    try {
+      setSaving(true);
+      await lineageApi.deleteColumnRelation(relationId);
+      message.success('字段血缘关系删除成功');
+      // 刷新列表
+      loadExistingRelations();
+      // 调用成功回调
+      if (onSuccess) {
+        onSuccess();
+      }
+    } catch (error) {
+      console.error('删除字段血缘关系失败:', error);
+      message.error(`删除字段血缘关系失败: ${error.response?.data?.detail || error.message || '未知错误'}`);
     } finally {
       setSaving(false);
     }
@@ -368,6 +391,28 @@ const ColumnLineageConfig = ({ visible, onCancel, onSuccess, forceRefresh, table
           return '--';
         }
       }
+    },
+    {
+      title: '操作',
+      key: 'action',
+      render: (_, record) => (
+        <Popconfirm
+          title="确定要删除这条字段血缘关系吗？"
+          onConfirm={() => handleDeleteRelation(record.id)}
+          okText="确定"
+          cancelText="取消"
+          placement="topRight"
+        >
+          <Button
+            type="link"
+            danger
+            icon={<DeleteOutlined />}
+            size="small"
+          >
+            删除
+          </Button>
+        </Popconfirm>
+      )
     }
   ];
 

@@ -42,6 +42,7 @@ class TableMetadataBase(BaseModel):
     schema_name: Optional[str] = Field(None, description="模式/索引名", max_length=100)
     description: Optional[str] = Field(None, description="表描述")
     properties: Optional[Dict[str, Any]] = Field(None, description="其他属性")
+    columns: List[Dict[str, Any]] = Field(default_factory=list, description="表的列数据列表")
 
 # 表元数据创建模型
 class TableMetadataCreate(TableMetadataBase):
@@ -53,17 +54,7 @@ class TableMetadataUpdate(BaseModel):
     schema_name: Optional[str] = Field(None, max_length=100)
     description: Optional[str] = None
     properties: Optional[Dict[str, Any]] = None
-
-# 表元数据响应模型
-class TableMetadataResponse(TableMetadataBase):
-    id: int = Field(..., description="表ID")
-    data_source_id: int = Field(..., description="数据源ID")
-    created_at: datetime = Field(..., description="创建时间")
-    updated_at: datetime = Field(..., description="更新时间")
-    
-    model_config = {
-        "from_attributes": True
-    }
+    columns: Optional[List[Dict[str, Any]]] = Field(None, description="表的列数据列表")
 
 # 列元数据基础模型
 class ColumnMetadataBase(BaseModel):
@@ -89,6 +80,18 @@ class ColumnMetadataUpdate(BaseModel):
 class ColumnMetadataResponse(ColumnMetadataBase):
     id: int = Field(..., description="列ID")
     table_id: int = Field(..., description="表ID")
+    
+    model_config = {
+        "from_attributes": True
+    }
+
+# 表元数据响应模型
+class TableMetadataResponse(TableMetadataBase):
+    id: int = Field(..., description="表ID")
+    data_source_id: int = Field(..., description="数据源ID")
+    created_at: datetime = Field(..., description="创建时间")
+    updated_at: datetime = Field(..., description="更新时间")
+    columns: List[ColumnMetadataResponse] = Field(default_factory=list, description="关联的列元数据列表")
     
     model_config = {
         "from_attributes": True

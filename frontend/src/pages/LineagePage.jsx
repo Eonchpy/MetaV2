@@ -35,30 +35,16 @@ const LineagePage = () => {
       setLoading(true);
       const response = await tableMetadataApi.getAll({ page: 1, page_size: 1000 });
       console.log('表数据响应:', response);
-      // 假设响应是一个列表，如果是分页对象则取items
-      let tableList = Array.isArray(response) ? response : response.items || [];
-      
-      // 如果没有表数据，添加默认表作为兜底
-      if (tableList.length === 0) {
-        console.log('没有获取到表数据，使用默认表');
-        tableList = [
-          { id: 1, name: 'dw_customer_order', schema_name: '默认模式' },
-          { id: 2, name: 'order_detail', schema_name: '默认模式' },
-          { id: 3, name: 'customer_info', schema_name: '默认模式' }
-        ];
-      }
+      // 假设响应是一个列表，如果是分页对象则取items或data
+      let tableList = Array.isArray(response) ? response : (response.items || response.data || []);
       
       console.log('处理后的表列表:', tableList);
       setTables(tableList);
     } catch (error) {
       console.error('获取表列表错误:', error);
       message.error('获取表列表失败');
-      // 错误时也添加默认表
-      setTables([
-        { id: 1, name: 'dw_customer_order', schema_name: '默认模式' },
-        { id: 2, name: 'order_detail', schema_name: '默认模式' },
-        { id: 3, name: 'customer_info', schema_name: '默认模式' }
-      ]);
+      // 错误时设置为空数组
+      setTables([]);
     } finally {
       setLoading(false);
     }
@@ -72,20 +58,19 @@ const LineagePage = () => {
       const response = await tableMetadataApi.getById(tableId);
       console.log('获取列信息响应:', response);
       
+      // 处理API响应，支持两种格式：直接返回表对象或包含data字段的对象
+      const tableData = response.data || response;
+      console.log('处理后的表数据:', tableData);
+      
       let columns = [];
-      if (response && response.columns && Array.isArray(response.columns)) {
-        columns = response.columns;
+      if (tableData && tableData.columns && Array.isArray(tableData.columns)) {
+        columns = tableData.columns;
         console.log('成功获取到列数据，数量:', columns.length);
         // 打印前几列数据进行调试
         console.log('列数据示例:', columns.slice(0, 3));
       } else {
-        console.log('未获取到列数据，使用默认列');
-        // 如果没有列数据，添加默认列作为兜底
-        columns = [
-          { id: 1, name: 'id', data_type: 'int' },
-          { id: 2, name: 'name', data_type: 'string' },
-          { id: 3, name: 'created_at', data_type: 'datetime' }
-        ];
+        console.log('未获取到列数据');
+        columns = [];
       }
       
       setTableColumns(columns);
@@ -105,21 +90,8 @@ const LineagePage = () => {
     } catch (error) {
       console.error('获取列列表错误:', error);
       message.error('获取列列表失败');
-      // 错误时也添加默认列
-      const defaultColumns = [
-        { id: 1, name: 'id', data_type: 'int' },
-        { id: 2, name: 'name', data_type: 'string' },
-        { id: 3, name: 'created_at', data_type: 'datetime' }
-      ];
-      setTableColumns(defaultColumns);
-      
-      // 错误时也尝试使用默认列
-      if (activeTab === 'column') {
-        setSelectedColumn(defaultColumns[0]);
-        setTimeout(() => {
-          fetchColumnLineageGraph(defaultColumns[0].id);
-        }, 0);
-      }
+      // 错误时设置为空数组
+      setTableColumns([]);
     } finally {
       setLoading(false);
     }
@@ -135,16 +107,19 @@ const LineagePage = () => {
       console.log('调用lineageApi.getTableLineageGraph');
       const response = await lineageApi.getTableLineageGraph(tableId);
       
+      // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
+      const graphData = response.data || response;
+      
       console.log('获取表级血缘数据成功，响应数据:', {
-        nodesCount: response?.nodes?.length || 0,
-        edgesCount: response?.edges?.length || 0
+        nodesCount: graphData?.nodes?.length || 0,
+        edgesCount: graphData?.edges?.length || 0
       });
       
       console.log('设置graphData状态');
-      setGraphData(response);
+      setGraphData(graphData);
       
       console.log('调用renderGraph渲染图表');
-      renderGraph(response);
+      renderGraph(graphData);
     } catch (error) {
       console.error('获取表级血缘关系失败:', error);
       console.error('错误详情:', error.response?.data || error.message);
@@ -181,7 +156,8 @@ const LineagePage = () => {
     try {
       setLoading(true);
       const response = await lineageApi.getAllTableRelations({ page: 1, page_size: 100 });
-      setTableLineageList(Array.isArray(response) ? response : response.items || []);
+      console.log('获取表级血缘关系列表响应:', response);
+      setTableLineageList(Array.isArray(response) ? response : response.data || []);
     } catch (error) {
       message.error('获取表级血缘关系列表失败');
     } finally {
@@ -194,7 +170,7 @@ const LineagePage = () => {
     try {
       setLoading(true);
       const response = await lineageApi.getAllColumnRelations({ page: 1, page_size: 100 });
-      setColumnLineageList(Array.isArray(response) ? response : response.items || []);
+      setColumnLineageList(Array.isArray(response) ? response : response.data || []);
     } catch (error) {
       message.error('获取列级血缘关系列表失败');
     } finally {
@@ -256,7 +232,7 @@ const LineagePage = () => {
     console.log('原始数据edges数量:', data.edges?.length || 0);
     
     const nodes = data.nodes?.map(node => ({
-      id: node.id,
+      id: `${node.type}_${node.id}`,  // 添加类型前缀，确保节点id唯一
       name: node.name,
       category: node.type === 'table' ? 0 : 1,
       symbolSize: node.type === 'table' ? 40 : 30,
@@ -270,20 +246,34 @@ const LineagePage = () => {
       }
     })) || [];
 
-    const links = data.edges?.map(link => ({
-      source: link.source,
-      target: link.target,
-      value: link.relation_type,
-      label: {
-        show: true,
-        formatter: link.relation_type,
-        position: 'middle'
-      },
-      lineStyle: {
-        width: 2,
-        curveness: 0.3
+    const links = data.edges?.map(link => {
+      // 根据边的类型确定source和target的节点类型
+      let sourceId, targetId;
+      if (link.type === 'table_column_relation') {
+        // 表和列的连接边：source是表节点，target是列节点
+        sourceId = `table_${link.source}`;
+        targetId = `column_${link.target}`;
+      } else if (link.type === 'column_lineage') {
+        // 列级血缘关系边：source和target都是列节点
+        sourceId = `column_${link.source}`;
+        targetId = `column_${link.target}`;
+      } else {
+        // 其他类型的边：默认都是表节点
+        sourceId = `table_${link.source}`;
+        targetId = `table_${link.target}`;
       }
-    })) || [];
+      
+      return {
+        source: sourceId,
+        target: targetId,
+        value: link.relation_type,
+        label: {
+          show: true,
+          formatter: link.relation_type,
+          position: 'middle'
+        }
+      };
+    }) || [];
     
     console.log('转换完成，nodes数量:', nodes.length, 'links数量:', links.length);
 
@@ -318,21 +308,36 @@ const LineagePage = () => {
             formatter: '{b}'
           },
           edgeLabel: {
+            show: true,
             fontSize: 12
           },
+          edgeSymbol: ['none', 'arrow'],
+          edgeSymbolSize: 10,
           data: nodes,
           links: links,
           categories: categories,
           emphasis: {
-            focus: 'adjacency',
+            focus: 'self',
+            itemStyle: {
+              opacity: 1
+            },
             lineStyle: {
               width: 4
             }
           },
+          blur: {
+            itemStyle: {
+              opacity: 0.3
+            },
+            lineStyle: {
+              opacity: 0.3
+            }
+          },
           lineStyle: {
-            opacity: 0.9,
-            width: 2,
-            curveness: 0
+            opacity: 1,
+            width: 1.5,
+            curveness: 0.3,
+            color: '#333'
           },
           itemStyle: {
             borderWidth: 2
@@ -517,8 +522,12 @@ const LineagePage = () => {
   const tableLineageColumns = [
     {
       title: '源表',
-      dataIndex: ['source_table', 'name'],
-      key: 'source_table_name'
+      dataIndex: 'source_tables',
+      key: 'source_tables',
+      render: (sourceTables) => {
+        if (!Array.isArray(sourceTables)) return '--';
+        return sourceTables.map(table => table.name).join(', ');
+      }
     },
     {
       title: '目标表',
@@ -570,15 +579,25 @@ const LineagePage = () => {
       key: 'target_column_name'
     },
     {
-      title: '关系类型',
-      dataIndex: 'relation_type',
-      key: 'relation_type'
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true
+      title: '转换规则',
+      dataIndex: 'transformation_details',
+      key: 'transformation_details',
+      ellipsis: true,
+      render: (details) => {
+        if (!details) return '--';
+        try {
+          const parsedDetails = typeof details === 'string' ? JSON.parse(details) : details;
+          // 尝试获取转换规则，如果没有则返回JSON字符串
+          if (parsedDetails && typeof parsedDetails === 'object') {
+            // 优先返回转换规则，如果没有则返回描述或类型
+            return parsedDetails.rule || parsedDetails.description || parsedDetails.type || JSON.stringify(parsedDetails, null, 2);
+          }
+          return details;
+        } catch (e) {
+          console.error('解析转换规则失败:', e);
+          return details;
+        }
+      }
     },
     {
       title: '操作',
