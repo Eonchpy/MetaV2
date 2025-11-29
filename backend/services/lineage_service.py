@@ -638,6 +638,7 @@ class LineageService:
             except (ValueError, TypeError):
                 # 如果转换失败，跳过此表
                 continue
+        # 构建表节点列表
         for table_id in table_nodes:
             table = table_dict.get(table_id)
             if table:

@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     
     # 数据库连接配置
     # 用于存储元数据的数据库，使用SQLite简化部署
-    # 使用绝对路径确保数据库文件位置固定
-    metadata_db_url: str = "sqlite:///D:/working/PersonalSys/MetaV2/metadata.db"
+    # 使用相对路径指向项目根目录的metadata.db文件
+    metadata_db_url: str = "sqlite:///../metadata.db"
     
     # 数据库连接池配置
     db_pool_size: int = 10

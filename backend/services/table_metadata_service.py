@@ -74,11 +74,10 @@ class TableMetadataService:
         
         # 添加搜索条件
         if keyword:
-            # 在表名、描述和注释中搜索关键词
+            # 在表名和描述中搜索关键词
             query = query.filter(
                 (TableMetadata.name.ilike(f'%{keyword}%')) |
-                (TableMetadata.description.ilike(f'%{keyword}%') if TableMetadata.description else False) |
-                (TableMetadata.comment.ilike(f'%{keyword}%') if TableMetadata.comment else False)
+                (TableMetadata.description.ilike(f'%{keyword}%') if TableMetadata.description else False)
             )
         
         # 添加排序
