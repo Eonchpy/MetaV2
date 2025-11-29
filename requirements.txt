@@ -1,0 +1,25 @@
+# 数据库连接
+cx_Oracle==8.3.0
+pymongo==4.3.3
+elasticsearch==8.5.3
+
+# Web框架
+fastapi==0.104.1
+uvicorn==0.24.0
+sqlalchemy==2.0.19
+
+# 数据处理
+pandas==2.2.3
+
+
+pyyaml==6.0.1
+
+# 前端集成
+python-multipart==0.0.6
+
+# 配置管理
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# 血缘关系可视化支持
+networkx==3.1

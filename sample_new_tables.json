@@ -1,0 +1,144 @@
+{
+  "data_sources": [
+    {
+      "name": "示例数据源",
+      "description": "用于演示的数据源",
+      "source_type": "oracle",
+      "type": "oracle",
+      "connection_config": {
+        "host": "localhost",
+        "port": 1521,
+        "service_name": "ORCL",
+        "username": "demo_user",
+        "password": "demo_password"
+      }
+    }
+  ],
+  "tables": [
+    {
+      "data_source_name": "示例数据源",
+      "name": "users",
+      "description": "用户信息表",
+      "schema_name": "public",
+      "properties": {
+        "table_type": "TABLE",
+        "row_count": 1000
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "name": "products",
+      "description": "产品信息表",
+      "schema_name": "public",
+      "properties": {
+        "table_type": "TABLE",
+        "row_count": 500
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "name": "orders",
+      "description": "订单信息表",
+      "schema_name": "public",
+      "properties": {
+        "table_type": "TABLE",
+        "row_count": 5000
+      }
+    }
+  ],
+  "columns": [
+    {
+      "table_name": "users",
+      "data_source_name": "示例数据源",
+      "name": "id",
+      "data_type": "INT",
+      "description": "用户ID",
+      "is_primary_key": true,
+      "is_nullable": false
+    },
+    {
+      "table_name": "users",
+      "data_source_name": "示例数据源",
+      "name": "username",
+      "data_type": "VARCHAR(50)",
+      "description": "用户名",
+      "is_nullable": false
+    },
+    {
+      "table_name": "users",
+      "data_source_name": "示例数据源",
+      "name": "email",
+      "data_type": "VARCHAR(100)",
+      "description": "电子邮箱",
+      "is_nullable": false
+    },
+    {
+      "table_name": "products",
+      "data_source_name": "示例数据源",
+      "name": "product_id",
+      "data_type": "INT",
+      "description": "产品ID",
+      "is_primary_key": true,
+      "is_nullable": false
+    },
+    {
+      "table_name": "products",
+      "data_source_name": "示例数据源",
+      "name": "product_name",
+      "data_type": "VARCHAR(200)",
+      "description": "产品名称",
+      "is_nullable": false
+    },
+    {
+      "table_name": "products",
+      "data_source_name": "示例数据源",
+      "name": "price",
+      "data_type": "DECIMAL(10,2)",
+      "description": "产品价格",
+      "is_nullable": false
+    },
+    {
+      "table_name": "orders",
+      "data_source_name": "示例数据源",
+      "name": "order_id",
+      "data_type": "INT",
+      "description": "订单ID",
+      "is_primary_key": true,
+      "is_nullable": false
+    },
+    {
+      "table_name": "orders",
+      "data_source_name": "示例数据源",
+      "name": "user_id",
+      "data_type": "INT",
+      "description": "用户ID",
+      "is_foreign_key": true,
+      "is_nullable": false
+    },
+    {
+      "table_name": "orders",
+      "data_source_name": "示例数据源",
+      "name": "product_id",
+      "data_type": "INT",
+      "description": "产品ID",
+      "is_foreign_key": true,
+      "is_nullable": false
+    },
+    {
+      "table_name": "orders",
+      "data_source_name": "示例数据源",
+      "name": "order_date",
+      "data_type": "TIMESTAMP",
+      "description": "下单时间",
+      "is_nullable": false
+    },
+    {
+      "table_name": "orders",
+      "data_source_name": "示例数据源",
+      "name": "quantity",
+      "data_type": "INT",
+      "description": "数量",
+      "is_nullable": false
+    }
+  ]
+}
