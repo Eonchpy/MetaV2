@@ -75,15 +75,14 @@ const TableDetailPage = () => {
   const loadColumns = useCallback(async () => {
     setLoading(prev => ({ ...prev, columns: true }));
     try {
-      const response = await columnMetadataApi.getByTable(id);
-      // 确保返回的是数组，并处理各种可能的响应格式
+      // 使用tableMetadataApi.getById获取表信息，包含所有列信息，不受API分页限制
+      const response = await tableMetadataApi.getById(id);
+      // 确保返回的是表对象，并处理各种可能的响应格式
+      const tableData = response.data || response;
+      // 从表对象中获取列信息
       let columnData = [];
-      if (response) {
-        if (Array.isArray(response.data)) {
-          columnData = response.data;
-        } else if (Array.isArray(response)) {
-          columnData = response;
-        }
+      if (tableData && tableData.columns) {
+        columnData = Array.isArray(tableData.columns) ? tableData.columns : [];
       }
       // 添加索引，并按位置排序（如果有排序信息）
       const sortedColumns = columnData.sort((a, b) => {
@@ -505,13 +504,15 @@ const TableDetailPage = () => {
         <>
           <div className="table-header">
             <div className="button-group">
-              <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>返回列表</Button>
-              <Button type="primary" icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading.table || loading.columns || loading.lineage}>
-                刷新数据
-              </Button>
-              <Button icon={<DownloadOutlined />} onClick={handleExport} disabled={columns.length === 0}>
-                导出表结构
-              </Button>
+              <Space size="middle">
+                <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>返回列表</Button>
+                <Button type="primary" icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading.table || loading.columns || loading.lineage}>
+                  刷新数据
+                </Button>
+                <Button icon={<DownloadOutlined />} onClick={handleExport} disabled={columns.length === 0}>
+                  导出表结构
+                </Button>
+              </Space>
             </div>
             
             <Card className="info-card" ref={cardRef}>
@@ -575,8 +576,9 @@ const TableDetailPage = () => {
                       rowKey="id"
                       pagination={{
                         pageSize: 50,
+                        total: columns.length,
                         showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100']
+                        pageSizeOptions: ['10', '20', '50', '100', '200']
                       }}
                       scroll={{ x: 'max-content' }}
                       size="middle"

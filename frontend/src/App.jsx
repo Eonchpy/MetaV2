@@ -1,7 +1,7 @@
 import React from 'react'
 import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import { Layout, Menu } from 'antd'
-import { DatabaseOutlined, LineChartOutlined, SettingOutlined, UploadOutlined, TableOutlined } from '@ant-design/icons'
+import { DatabaseOutlined, LineChartOutlined, SettingOutlined, UploadOutlined, TableOutlined, PlusOutlined } from '@ant-design/icons'
 import './App.css'
 
 import DataSourcePage from './pages/DataSourcePage'
@@ -10,6 +10,7 @@ import SettingsPage from './pages/SettingsPage'
 import ImportPage from './pages/ImportPage'
 import TableBrowsePage from './pages/TableBrowsePage'
 import TableDetailPage from './pages/TableDetailPage'
+import TableCreatePage from './pages/TableCreatePage'
 
 const { Header, Content, Sider } = Layout
 
@@ -27,6 +28,9 @@ function App() {
           <Menu mode="inline" selectedKeys={[currentPath]}>
             <Menu.Item key="/tables" icon={<TableOutlined />}>
               <Link to="/tables">表浏览与搜索</Link>
+            </Menu.Item>
+            <Menu.Item key="/tables/create" icon={<PlusOutlined />}>
+              <Link to="/tables/create">新建表结构</Link>
             </Menu.Item>
             <Menu.Item key="/datasources" icon={<DatabaseOutlined />}>
               <Link to="/datasources">数据源管理</Link>
@@ -47,6 +51,7 @@ function App() {
             <Routes>
               <Route path="/" element={<TableBrowsePage />} />
               <Route path="/tables" element={<TableBrowsePage />} />
+              <Route path="/tables/create" element={<TableCreatePage />} />
               <Route path="/table/:id" element={<TableDetailPage />} />
               <Route path="/datasources" element={<DataSourcePage />} />
               <Route path="/import" element={<ImportPage />} />

@@ -38,8 +38,10 @@ const ImportPage = () => {
   };
 
   return (
-    <div style={{ padding: '24px' }}>
-      <h1 style={{ marginBottom: '24px' }}>数据导入与血缘配置</h1>
+    <Card className="page-card">
+      <div className="page-header">
+        <h2>数据导入与血缘配置</h2>
+      </div>
       
       <Tabs defaultActiveKey="import">
         <TabPane tab={<span><UploadOutlined /> 数据导入</span>} key="import">
@@ -187,7 +189,7 @@ const ImportPage = () => {
         onSuccess={handleConfigSuccess}
         forceRefresh={forceRefreshLineage}
       />
-    </div>
+    </Card>
   );
 };
 

@@ -1,0 +1,104 @@
+{
+  "column_lineages": [
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "users",
+      "source_column_name": "id",
+      "target_db_name": "example_db",
+      "target_table_name": "orders",
+      "target_column_name": "user_id",
+      "relation_type": "FOREIGN_KEY",
+      "description": "订单表的user_id字段关联到用户表的id字段",
+      "transformation_details": {
+        "logic": "直接关联",
+        "is_primary_key": true
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "products",
+      "source_column_name": "id",
+      "target_db_name": "example_db",
+      "target_table_name": "orders",
+      "target_column_name": "product_id",
+      "relation_type": "FOREIGN_KEY",
+      "description": "订单表的product_id字段关联到产品表的id字段",
+      "transformation_details": {
+        "logic": "直接关联",
+        "is_primary_key": true
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "orders",
+      "source_column_name": "quantity",
+      "target_db_name": "example_db",
+      "target_table_name": "order_details",
+      "target_column_name": "quantity",
+      "relation_type": "TRANSFORMATION",
+      "description": "订单详情表的quantity字段从订单表的quantity字段复制而来",
+      "transformation_details": {
+        "logic": "直接复制",
+        "expression": "quantity = source.quantity"
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "orders",
+      "source_column_name": "price",
+      "target_db_name": "example_db",
+      "target_table_name": "order_details",
+      "target_column_name": "price",
+      "relation_type": "TRANSFORMATION",
+      "description": "订单详情表的price字段从订单表的price字段复制而来",
+      "transformation_details": {
+        "logic": "直接复制",
+        "expression": "price = source.price"
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "orders",
+      "source_column_name": "quantity",
+      "target_db_name": "example_db",
+      "target_table_name": "order_summary",
+      "target_column_name": "total_quantity",
+      "relation_type": "AGGREGATION",
+      "description": "订单汇总表的total_quantity字段是订单表quantity字段的总和",
+      "transformation_details": {
+        "logic": "聚合计算",
+        "expression": "total_quantity = SUM(source.quantity)",
+        "group_by": ["order_date"]
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "orders",
+      "source_column_name": "price",
+      "target_db_name": "example_db",
+      "target_table_name": "order_summary",
+      "target_column_name": "total_amount",
+      "relation_type": "AGGREGATION",
+      "description": "订单汇总表的total_amount字段是订单表price字段的总和",
+      "transformation_details": {
+        "logic": "聚合计算",
+        "expression": "total_amount = SUM(source.price)",
+        "group_by": ["order_date"]
+      }
+    },
+    {
+      "source_db_name": "example_db",
+      "source_table_name": "users",
+      "source_column_name": "created_at",
+      "target_db_name": "example_db",
+      "target_table_name": "user_stats",
+      "target_column_name": "signup_date",
+      "relation_type": "TRANSFORMATION",
+      "description": "用户统计表的signup_date字段从用户表的created_at字段提取日期部分",
+      "transformation_details": {
+        "logic": "日期提取",
+        "expression": "signup_date = DATE(source.created_at)"
+      }
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Table, Input, Button, Pagination, Empty, Tag, Dropdown, Menu, Space, Checkbox, Tooltip } from 'antd';
+import { Table, Input, Button, Pagination, Empty, Tag, Dropdown, Menu, Space, Checkbox, Tooltip, Card } from 'antd';
 import { SearchOutlined, ReloadOutlined, FilterOutlined, DatabaseOutlined, CloudServerOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { tableMetadataApi } from '../services/api';
@@ -275,11 +275,12 @@ const TableBrowsePage = () => {
   }, []);
   
   return (
-    <div className="table-browse-page">
+    <Card className="page-card">
       <div className="page-header">
-        <h1>表浏览</h1>
+        <h2>表浏览</h2>
         <div className="header-actions">
-          <Space.Compact>
+          <Space size="middle">
+            <Space.Compact>
               <Input.Search
                 placeholder="搜索表名或描述"
                 allowClear
@@ -291,50 +292,51 @@ const TableBrowsePage = () => {
               />
             </Space.Compact>
           
-          <Dropdown menu={columnFilterMenu}>
-            <Button icon={<FilterOutlined />}>列筛选</Button>
-          </Dropdown>
+            <Dropdown menu={columnFilterMenu}>
+              <Button icon={<FilterOutlined />}>列筛选</Button>
+            </Dropdown>
           
-          <Dropdown 
-            menu={{
-              items: [
-                {
-                  key: 'all',
-                  label: (
-                    <Checkbox 
-                      checked={selectedRowKeys.length === tableData.length}
-                      indeterminate={selectedRowKeys.length > 0 && selectedRowKeys.length < tableData.length}
-                      onChange={onSelectAllChange}
-                    >
-                      全选
-                    </Checkbox>
-                  )
-                },
-                {
-                  key: 'download',
-                  label: '导出选中',
-                  disabled: selectedRowKeys.length === 0,
-                  onClick: handleExportSelected
-                },
-                {
-                  key: 'refresh',
-                  label: '刷新',
-                  onClick: handleRefresh
-                }
-              ]
-            }}
-            placement="bottomRight"
-            trigger={['click']}
-          >
-            <Button type="primary">批量操作</Button>
-          </Dropdown>
+            <Dropdown 
+              menu={{
+                items: [
+                  {
+                    key: 'all',
+                    label: (
+                      <Checkbox 
+                        checked={selectedRowKeys.length === tableData.length}
+                        indeterminate={selectedRowKeys.length > 0 && selectedRowKeys.length < tableData.length}
+                        onChange={onSelectAllChange}
+                      >
+                        全选
+                      </Checkbox>
+                    )
+                  },
+                  {
+                    key: 'download',
+                    label: '导出选中',
+                    disabled: selectedRowKeys.length === 0,
+                    onClick: handleExportSelected
+                  },
+                  {
+                    key: 'refresh',
+                    label: '刷新',
+                    onClick: handleRefresh
+                  }
+                ]
+              }}
+              placement="bottomRight"
+              trigger={['click']}
+            >
+              <Button type="primary">批量操作</Button>
+            </Dropdown>
           
-          <Button 
-            icon={<ReloadOutlined />}
-            onClick={handleRefresh}
-          >
-            刷新
-          </Button>
+            <Button 
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+            >
+              刷新
+            </Button>
+          </Space>
         </div>
       </div>
       
@@ -376,7 +378,7 @@ const TableBrowsePage = () => {
           }
         })}
       />
-    </div>
+    </Card>
   );
 };
 

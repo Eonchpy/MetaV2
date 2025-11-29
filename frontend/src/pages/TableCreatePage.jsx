@@ -305,9 +305,9 @@ const TableCreatePage = () => {
   };
 
   return (
-    <div className="table-create-page">
+    <Card className="page-card">
       <div className="page-header">
-        <h1>表结构配置</h1>
+        <h2>表结构配置</h2>
         <Button 
           type="primary" 
           icon={<SaveOutlined />} 
@@ -570,7 +570,7 @@ const TableCreatePage = () => {
           </Form.Item>
         </Form>
       </Modal>
-    </div>
+    </Card>
   );
 };
 

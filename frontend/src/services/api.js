@@ -82,7 +82,7 @@ export const columnMetadataApi = {
   getById: (id) => api.get(`/columns/${id}`),
   
   // 根据表ID获取列元数据
-  getByTable: (tableId) => api.get('/columns', { params: { table_id: tableId } }),
+  getByTable: (tableId, limit = 1000) => api.get('/columns', { params: { table_id: tableId, limit } }),
   
   // 创建列元数据
   create: (column) => api.post('/columns', column),

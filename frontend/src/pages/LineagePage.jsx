@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table } from 'antd';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table, AutoComplete } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import * as echarts from 'echarts';
 import axios from 'axios';
@@ -12,10 +12,18 @@ const { TextArea } = Input;
 const LineagePage = () => {
   const [loading, setLoading] = useState(false);
   const [tables, setTables] = useState([]);
-  const [selectedTable, setSelectedTable] = useState(null);
+  // 为每个标签页创建独立的选中表状态
+  const [selectedTables, setSelectedTables] = useState({
+    table: null,
+    column: null
+  });
   const [selectedColumn, setSelectedColumn] = useState(null);
   const [tableColumns, setTableColumns] = useState([]);
-  const [graphData, setGraphData] = useState(null);
+  // 为每个标签页创建独立的graphData状态，保存切换前的结果
+  const [graphData, setGraphData] = useState({
+    table: null,
+    column: null
+  });
   const [activeTab, setActiveTab] = useState('table');
   const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
   const [currentRelation, setCurrentRelation] = useState(null);
@@ -23,11 +31,94 @@ const LineagePage = () => {
   const [columnLineageList, setColumnLineageList] = useState([]);
   const [form] = Form.useForm();
   
+  // 搜索相关状态，每个标签页独立
+  const [searchValues, setSearchValues] = useState({
+    table: '',
+    column: ''
+  });
+  const [searchResults, setSearchResults] = useState({
+    table: [],
+    column: []
+  });
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  
+  // 获取当前标签页的状态
+  const currentSearchValue = searchValues[activeTab] || '';
+  const currentSearchResults = searchResults[activeTab] || [];
+  const currentSelectedTable = selectedTables[activeTab] || null;
+  const currentGraphData = graphData[activeTab] || null;
+  
   // 为表级和列级血缘分别创建独立的图表引用
   const tableChartRef = useRef(null);
   const columnChartRef = useRef(null);
   const tableChartInstance = useRef(null);
   const columnChartInstance = useRef(null);
+  
+  // 防抖搜索函数
+  const debounceSearch = useCallback((keyword) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    return new Promise((resolve) => {
+      searchTimeoutRef.current = setTimeout(async () => {
+        if (keyword.trim()) {
+          try {
+            setSearchLoading(true);
+            // 调用API搜索表
+            const response = await tableMetadataApi.getAll({ keyword: keyword.trim(), limit: 20 });
+            const tableList = Array.isArray(response) ? response : (response.data || []);
+            resolve(tableList);
+          } catch (error) {
+            console.error('搜索表失败:', error);
+            resolve([]);
+          } finally {
+            setSearchLoading(false);
+          }
+        } else {
+          resolve([]);
+        }
+      }, 300);
+    });
+  }, []);
+  
+  // 处理搜索值变化
+  const handleSearchChange = async (value) => {
+    // 捕获当前标签页，避免异步操作完成后标签页已切换导致结果存储错误
+    const currentTab = activeTab;
+    
+    setSearchValues(prev => ({
+      ...prev,
+      [currentTab]: value
+    }));
+    const results = await debounceSearch(value);
+    setSearchResults(prev => ({
+      ...prev,
+      [currentTab]: results
+    }));
+  };
+  
+  // 处理表选择
+  const handleTableSelect = (value) => {
+    setSearchValues(prev => ({
+      ...prev,
+      [activeTab]: value.name
+    }));
+    setSelectedTables(prev => ({
+      ...prev,
+      [activeTab]: value
+    }));
+    setSelectedColumn(null);
+    setTableColumns([]);
+    
+    if (value) {
+      fetchTableColumns(value.id);
+      if (activeTab === 'table') {
+        fetchTableLineageGraph(value.id);
+      }
+    }
+  };
 
   // 获取所有表
   const fetchTables = async () => {
@@ -108,18 +199,20 @@ const LineagePage = () => {
       const response = await lineageApi.getTableLineageGraph(tableId);
       
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
-      const graphData = response.data || response;
+      const tableGraphData = response.data || response;
       
       console.log('获取表级血缘数据成功，响应数据:', {
-        nodesCount: graphData?.nodes?.length || 0,
-        edgesCount: graphData?.edges?.length || 0
+        nodesCount: tableGraphData?.nodes?.length || 0,
+        edgesCount: tableGraphData?.edges?.length || 0
       });
       
       console.log('设置graphData状态');
-      setGraphData(graphData);
+      setGraphData(prev => ({
+        ...prev,
+        table: tableGraphData
+      }));
       
-      console.log('调用renderGraph渲染图表');
-      renderGraph(graphData);
+      // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
       console.error('获取表级血缘关系失败:', error);
       console.error('错误详情:', error.response?.data || error.message);
@@ -140,8 +233,11 @@ const LineagePage = () => {
       // 直接调用axios，确保使用正确的API路径
       const response = await axios.get(`http://localhost:8000/api/lineages/column/graph/${columnId}`);
       console.log('成功获取列级血缘关系图数据:', response.data);
-      setGraphData(response.data);
-      renderGraph(response.data);
+      setGraphData(prev => ({
+        ...prev,
+        column: response.data
+      }));
+      // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
       console.error('获取列级血缘关系错误:', error);
       console.error('错误详情:', error.response?.data || error.message);
@@ -356,7 +452,7 @@ const LineagePage = () => {
     console.log('===== renderGraph 结束 =====');
   };
 
-  // 处理表选择变化
+  // 处理表选择变化（兼容旧的Select组件，用于列级视图的表选择）
   const handleTableChange = (tableId) => {
     console.log('===== handleTableChange 开始 =====');
     console.log('选择的表ID:', tableId);
@@ -364,8 +460,11 @@ const LineagePage = () => {
     const table = tables.find(t => t.id === tableId);
     console.log('找到的表:', table ? {id: table.id, name: table.name} : '未找到');
     
-    setSelectedTable(table);
-    console.log('已更新selectedTable状态');
+    setSelectedTables(prev => ({
+      ...prev,
+      [activeTab]: table
+    }));
+    console.log('已更新selectedTables状态');
     
     setSelectedColumn(null);
     setTableColumns([]);
@@ -399,49 +498,43 @@ const LineagePage = () => {
   const handleTabChange = (tab) => {
     console.log('===== 视图切换开始 =====');
     console.log('当前activeTab:', activeTab, '切换到:', tab);
-    console.log('切换前selectedTable状态:', selectedTable ? {id: selectedTable.id, name: selectedTable.name} : 'undefined');
-    console.log('切换前graphData状态:', graphData ? '有数据' : 'null');
+    console.log('切换前selectedTables状态:', selectedTables);
+    console.log('切换前graphData状态:', graphData);
     console.log('当前tables列表长度:', tables.length);
     
     setActiveTab(tab);
-    setGraphData(null);
-    console.log('已重置graphData为null');
+    console.log('已切换标签页，graphData状态保持不变');
     
     if (tab === 'table') {
       console.log('切换到表级血缘视图');
       fetchTableLineageList();
       
-      if (!selectedTable) {
-        console.log('未选中表，检查是否有表列表');
-        if (tables.length > 0) {
-          console.log(`自动选择第一个表: ${tables[0].id} - ${tables[0].name}`);
-          setSelectedTable(tables[0]);
-          console.log('立即调用fetchTableLineageGraph获取血缘数据');
-          fetchTableLineageGraph(tables[0].id);
-        } else {
-          console.log('警告: tables列表为空，无法自动选择表');
-        }
+      // 不需要重新获取数据，直接使用已保存的graphData
+      if (graphData.table) {
+        console.log('使用已保存的表级血缘数据，调用renderGraph渲染图表');
+        renderGraph(graphData.table);
+      } else if (selectedTables.table) {
+        console.log(`已选中表: ${selectedTables.table.id} - ${selectedTables.table.name}，但没有保存的graphData，调用fetchTableLineageGraph获取数据`);
+        fetchTableLineageGraph(selectedTables.table.id);
       } else {
-        console.log(`已选中表: ${selectedTable.id} - ${selectedTable.name}，调用fetchTableLineageGraph`);
-        fetchTableLineageGraph(selectedTable.id);
+        console.log('未选中表，等待用户选择');
       }
     } else if (tab === 'column') {
       console.log('切换到列级血缘视图');
       fetchColumnLineageList();
       
-      if (!selectedTable) {
-        console.log('未选中表，检查是否有表列表');
-        if (tables.length > 0) {
-          console.log(`自动选择第一个表: ${tables[0].id} - ${tables[0].name}`);
-          setSelectedTable(tables[0]);
-          console.log('调用fetchTableColumns获取列信息');
-          fetchTableColumns(tables[0].id);
-        } else {
-          console.log('警告: tables列表为空，无法自动选择表');
-        }
+      // 不需要重新获取数据，直接使用已保存的graphData
+      if (graphData.column) {
+        console.log('使用已保存的列级血缘数据，调用renderGraph渲染图表');
+        renderGraph(graphData.column);
+      } else if (selectedTables.column && selectedColumn) {
+        console.log(`已选中表和列，但没有保存的graphData，调用fetchColumnLineageGraph获取数据`);
+        fetchColumnLineageGraph(selectedColumn.id);
+      } else if (selectedTables.column) {
+        console.log(`已选中表: ${selectedTables.column.id} - ${selectedTables.column.name}，调用fetchTableColumns获取列信息`);
+        fetchTableColumns(selectedTables.column.id);
       } else {
-        console.log(`保持已选中表: ${selectedTable.id} - ${selectedTable.name}，调用fetchTableColumns`);
-        fetchTableColumns(selectedTable.id);
+        console.log('未选中表，等待用户选择');
       }
     } else if (tab === 'list') {
       console.log('切换到血缘关系列表视图');
@@ -491,32 +584,47 @@ const LineagePage = () => {
   // 监听graphData变化，确保图表正确渲染
   useEffect(() => {
     console.log('===== graphData变化监听 =====');
-    console.log('graphData状态变化:', graphData ? `包含${graphData.nodes?.length || 0}个节点` : 'null');
+    console.log('graphData状态变化:', graphData);
     
     // 有数据就重新渲染图表
-    if (graphData) {
-      console.log('graphData已更新，重新渲染图表');
-      renderGraph(graphData);
+    if (currentGraphData) {
+      console.log('当前标签页的graphData已更新，重新渲染图表');
+      renderGraph(currentGraphData);
     }
-  }, [graphData]);
+  }, [graphData, activeTab]);
   
   // 监听activeTab变化，确保在切换标签页后重新渲染正确的图表
   useEffect(() => {
     console.log('标签页切换，准备重新渲染对应图表');
     // 延迟一小段时间，确保DOM元素已经渲染
     const timer = setTimeout(() => {
-      if (graphData) {
-        renderGraph(graphData);
+      if (currentGraphData) {
+        renderGraph(currentGraphData);
       }
     }, 100);
     return () => clearTimeout(timer);
   }, [activeTab]);
   
-  // 监听selectedTable变化
+  // 监听activeTab变化，确保搜索结果与当前搜索值匹配
   useEffect(() => {
-    console.log('===== selectedTable变化监听 =====');
-    console.log('selectedTable状态:', selectedTable ? {id: selectedTable.id, name: selectedTable.name} : 'undefined');
-  }, [selectedTable]);
+    // 如果当前标签页的搜索值不为空，但搜索结果为空，自动触发搜索
+    if (currentSearchValue && currentSearchResults.length === 0) {
+      handleSearchChange(currentSearchValue);
+    }
+    // 如果当前标签页的搜索值为空，清空搜索结果
+    if (!currentSearchValue && currentSearchResults.length > 0) {
+      setSearchResults(prev => ({
+        ...prev,
+        [activeTab]: []
+      }));
+    }
+  }, [activeTab]);
+  
+  // 监听selectedTables变化
+  useEffect(() => {
+    console.log('===== selectedTables变化监听 =====');
+    console.log('selectedTables状态:', selectedTables);
+  }, [selectedTables]);
 
   // 表级血缘关系表格列
   const tableLineageColumns = [
@@ -619,25 +727,36 @@ const LineagePage = () => {
       <Tabs activeKey={activeTab} onChange={handleTabChange}>
         <TabPane tab="表级血缘" key="table">
           <div className="lineage-controls">
-            <Select
-              placeholder="选择表"
+            <AutoComplete
+              placeholder="输入表名搜索"
               style={{ width: 300 }}
-              onChange={handleTableChange}
-              loading={loading}
-              allowClear
+              onSearch={handleSearchChange}
+              onSelect={(value, option) => {
+                handleTableSelect(option);
+              }}
+              options={currentSearchResults.map(table => ({
+                value: table.name,
+                label: `${table.name} (${table.schema_name || '默认模式'})`,
+                ...table
+              }))}
+              loading={searchLoading}
+              value={currentSearchValue}
             >
-              {tables.map(table => (
-                <Option key={table.id} value={table.id}>
-                  {table.name} ({table.schema_name || '默认模式'})
-                </Option>
-              ))}
-            </Select>
+              <Input.Search
+                placeholder="输入表名搜索"
+                enterButton={<SearchOutlined />}
+                size="middle"
+                value={currentSearchValue}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                allowClear
+              />
+            </AutoComplete>
           </div>
           
           <div className="lineage-chart-container">
             {loading ? (
               <Spin tip="加载中..." style={{ marginTop: '100px' }} />
-            ) : graphData ? (
+            ) : graphData.table ? (
               <div ref={tableChartRef} style={{ width: '100%', height: '600px' }} />
             ) : (
               <div className="empty-state">请选择一个表查看血缘关系</div>
@@ -646,31 +765,42 @@ const LineagePage = () => {
         </TabPane>
         
         <TabPane tab="列级血缘" key="column">
-          <div className="lineage-controls">
-            <Select
-              placeholder="选择表"
-              style={{ width: 300, marginRight: 10 }}
-              onChange={handleTableChange}
-              loading={loading}
-              allowClear
-              value={selectedTable?.id}
-            >
-              {tables.map(table => (
-                <Option key={table.id} value={table.id}>
-                  {table.name} ({table.schema_name || '默认模式'})
-                </Option>
-              ))}
-            </Select>
-            
-            <Select
-              placeholder="选择列"
-              style={{ width: 300 }}
-              onChange={handleColumnChange}
-              loading={loading}
-              allowClear
-              disabled={!selectedTable}
-              value={selectedColumn?.id}
-            >
+          <div className="lineage-controls" style={{ display: 'flex', alignItems: 'center' }}>
+              <AutoComplete
+                placeholder="输入表名搜索"
+                style={{ width: 300, marginRight: 10 }}
+                onSearch={handleSearchChange}
+                onSelect={(value, option) => {
+                  handleTableSelect(option);
+                }}
+                options={currentSearchResults.map(table => ({
+                  value: table.name,
+                  label: `${table.name} (${table.schema_name || '默认模式'})`,
+                  ...table
+                }))}
+                loading={searchLoading}
+                value={currentSearchValue}
+              >
+                <Input.Search
+                  placeholder="输入表名搜索"
+                  enterButton={<SearchOutlined />}
+                  size="middle"
+                  value={currentSearchValue}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  allowClear
+                />
+              </AutoComplete>
+              
+              <Select
+                placeholder="选择列"
+                style={{ width: 300 }}
+                onChange={handleColumnChange}
+                loading={loading}
+                allowClear
+                disabled={!currentSelectedTable}
+                value={selectedColumn?.id}
+                size="middle"
+              >
               {tableColumns.map(column => (
                 <Option key={column.id} value={column.id}>
                   {column.name} ({column.data_type})
@@ -682,7 +812,7 @@ const LineagePage = () => {
           <div className="lineage-chart-container">
             {loading ? (
               <Spin tip="加载中..." style={{ marginTop: '100px' }} />
-            ) : graphData ? (
+            ) : graphData.column ? (
               <div ref={columnChartRef} style={{ width: '100%', height: '600px' }} />
             ) : (
               <div className="empty-state">请选择表和列查看血缘关系</div>

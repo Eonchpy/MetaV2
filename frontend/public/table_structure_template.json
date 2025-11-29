@@ -1,0 +1,138 @@
+{
+  "data_sources": [
+    {
+      "name": "示例数据源",
+      "description": "这是一个示例数据源",
+      "type": "mysql",
+      "connection_config": {
+        "host": "localhost",
+        "port": 3306,
+        "database": "example_db",
+        "username": "root",
+        "password": "password"
+      }
+    }
+  ],
+  "tables": [
+    {
+      "data_source_name": "示例数据源",
+      "name": "users",
+      "schema_name": "public",
+      "description": "用户信息表",
+      "properties": {
+        "engine": "InnoDB",
+        "charset": "utf8mb4"
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "name": "products",
+      "schema_name": "public",
+      "description": "产品信息表",
+      "properties": {
+        "engine": "InnoDB",
+        "charset": "utf8mb4"
+      }
+    }
+  ],
+  "columns": [
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "users",
+      "name": "id",
+      "data_type": "int",
+      "description": "用户ID",
+      "is_primary_key": true,
+      "properties": {
+        "auto_increment": true,
+        "length": 11
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "users",
+      "name": "username",
+      "data_type": "varchar",
+      "description": "用户名",
+      "is_primary_key": false,
+      "properties": {
+        "length": 50,
+        "not_null": true
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "users",
+      "name": "email",
+      "data_type": "varchar",
+      "description": "用户邮箱",
+      "is_primary_key": false,
+      "properties": {
+        "length": 100,
+        "not_null": true,
+        "unique": true
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "users",
+      "name": "created_at",
+      "data_type": "datetime",
+      "description": "创建时间",
+      "is_primary_key": false,
+      "properties": {
+        "not_null": true,
+        "default": "CURRENT_TIMESTAMP"
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "products",
+      "name": "id",
+      "data_type": "int",
+      "description": "产品ID",
+      "is_primary_key": true,
+      "properties": {
+        "auto_increment": true,
+        "length": 11
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "products",
+      "name": "name",
+      "data_type": "varchar",
+      "description": "产品名称",
+      "is_primary_key": false,
+      "properties": {
+        "length": 100,
+        "not_null": true
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "products",
+      "name": "price",
+      "data_type": "decimal",
+      "description": "产品价格",
+      "is_primary_key": false,
+      "properties": {
+        "precision": 10,
+        "scale": 2,
+        "not_null": true,
+        "default": 0.00
+      }
+    },
+    {
+      "data_source_name": "示例数据源",
+      "table_name": "products",
+      "name": "description",
+      "data_type": "text",
+      "description": "产品描述",
+      "is_primary_key": false,
+      "properties": {
+        "not_null": false
+      }
+    }
+  ]
+}
