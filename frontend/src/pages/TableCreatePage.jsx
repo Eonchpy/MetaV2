@@ -22,6 +22,15 @@ const TableCreatePage = () => {
   const [searchText, setSearchText] = useState('');
   const [filteredTables, setFilteredTables] = useState([]);
   const [selectedTableData, setSelectedTableData] = useState(null);
+  // 分页状态
+  const [pagination, setPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+    showSizeChanger: true,
+    showTotal: (total) => `共 ${total} 条记录`,
+    pageSizeOptions: ['10', '20', '50', '100']
+  });
 
   // 字段类型选项
   const fieldTypeOptions = [
@@ -44,37 +53,60 @@ const TableCreatePage = () => {
     fetchDataSources();
   }, []);
 
-  // 加载所有表数据
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        setLoading(true);
-        const response = await tableMetadataApi.getAll({ limit: 1000 });
-        if (response && response.data) {
+  // 加载表数据，支持分页和搜索
+  const fetchTables = async () => {
+    try {
+      setLoading(true);
+      const response = await tableMetadataApi.getAll({
+        skip: (pagination.current - 1) * pagination.pageSize,
+        limit: pagination.pageSize,
+        keyword: searchText
+      });
+      if (response) {
+        // 处理后端返回的分页格式：{ total: 15, data: [...] }
+        if (response.data && typeof response.total === 'number') {
+          // 新格式：{ data: [...], total: 15 }
           setTables(response.data);
           setFilteredTables(response.data);
+          setPagination(prev => ({
+            ...prev,
+            total: response.total
+          }));
+        } else if (Array.isArray(response)) {
+          // 兼容旧格式：直接返回数组
+          setTables(response);
+          setFilteredTables(response);
+          setPagination(prev => ({
+            ...prev,
+            total: response.length
+          }));
+        } else {
+          // 其他格式，尝试作为数组处理
+          setTables([]);
+          setFilteredTables([]);
+          setPagination(prev => ({
+            ...prev,
+            total: 0
+          }));
         }
-      } catch (error) {
-        message.error('加载表数据失败');
-      } finally {
-        setLoading(false);
       }
-    };
-    fetchTables();
-  }, []);
-
-  // 搜索表
-  useEffect(() => {
-    if (searchText) {
-      const filtered = tables.filter(table => 
-        table.name.toLowerCase().includes(searchText.toLowerCase()) ||
-        table.description?.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setFilteredTables(filtered);
-    } else {
-      setFilteredTables(tables);
+    } catch (error) {
+      message.error('加载表数据失败');
+      console.error('加载表数据失败:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [searchText, tables]);
+  };
+
+  // 初始加载和分页/搜索变化时重新加载数据
+  useEffect(() => {
+    fetchTables();
+  }, [pagination.current, pagination.pageSize, searchText]);
+
+  // 处理表格分页变化
+  const handleTableChange = (paginationChange) => {
+    setPagination(paginationChange);
+  };
 
   // 选择表进行编辑
   const handleSelectTable = async (tableId) => {
@@ -412,6 +444,21 @@ const TableCreatePage = () => {
                     key: 'name',
                   },
                   {
+                    title: '所属模式',
+                    dataIndex: 'schema_name',
+                    key: 'schema_name',
+                    ellipsis: true
+                  },
+                  {
+                    title: '数据源',
+                    dataIndex: 'data_source_id',
+                    key: 'data_source_id',
+                    render: (dataSourceId) => {
+                      const dataSource = dataSources.find(source => source.id === dataSourceId);
+                      return dataSource ? dataSource.name : '未知数据源';
+                    }
+                  },
+                  {
                     title: '描述',
                     dataIndex: 'description',
                     key: 'description',
@@ -429,8 +476,10 @@ const TableCreatePage = () => {
                 ]}
                 dataSource={filteredTables}
                 rowKey="id"
-                pagination={false}
+                pagination={pagination}
+                onChange={handleTableChange}
                 loading={loading}
+                bordered
               />
             ) : (
               <div style={{ textAlign: 'center', padding: '40px 0', color: '#999' }}>

@@ -9,20 +9,10 @@ const api = axios.create({
   }
 });
 
-// 响应拦截器，保留原始响应结构以便获取响应头
+// 响应拦截器，直接返回响应数据
 api.interceptors.response.use(
   response => {
-    // 对于表查询接口，保留原始响应以便获取总数信息
-    if (response.config && response.config.url && 
-        (response.config.url.includes('/tables') || 
-         response.config.url.includes('/columns') || 
-         response.config.url.includes('/lineages'))) {
-      return {
-        data: response.data,
-        total: parseInt(response.headers['x-total-count'] || 0),
-        headers: response.headers
-      };
-    }
+    // 直接返回响应数据，让前端组件处理不同的返回格式
     return response.data;
   },
   error => {

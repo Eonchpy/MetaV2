@@ -29,7 +29,7 @@ async def create_table(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("", response_model=List[TableMetadataResponse])
+@router.get("", response_model=dict)
 async def get_tables(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
@@ -42,19 +42,56 @@ async def get_tables(
     """
     获取表元数据列表，支持分页、按数据源筛选、搜索和排序
     """
-    if data_source_id:
-        tables = table_metadata_service.get_by_data_source(db, data_source_id)
-        return tables[skip:skip+limit]
-    else:
-        tables = table_metadata_service.get_all(
-            db, 
-            skip=skip, 
-            limit=limit,
-            keyword=keyword,
-            sort_field=sort_field,
-            sort_order=sort_order
+    # 构建查询
+    query = db.query(TableMetadata)
+    
+    # 添加搜索条件
+    if keyword:
+        query = query.filter(
+            (TableMetadata.name.ilike(f'%{keyword}%')) |
+            (TableMetadata.description.ilike(f'%{keyword}%') if TableMetadata.description else False)
         )
-        return tables
+    
+    # 添加数据源筛选
+    if data_source_id:
+        query = query.filter(TableMetadata.data_source_id == data_source_id)
+    
+    # 获取总记录数
+    total = query.count()
+    
+    # 添加排序
+    if sort_field and hasattr(TableMetadata, sort_field):
+        sort_column = getattr(TableMetadata, sort_field)
+        if sort_order.lower() == 'desc':
+            query = query.order_by(sort_column.desc())
+        else:
+            query = query.order_by(sort_column.asc())
+    else:
+        # 默认按ID排序
+        query = query.order_by(TableMetadata.id)
+    
+    # 添加分页
+    tables = query.offset(skip).limit(limit).all()
+    
+    # 将SQLAlchemy模型转换为字典列表
+    tables_dict = []
+    for table in tables:
+        # 转换为字典，排除不需要的字段
+        table_dict = {
+            "id": table.id,
+            "name": table.name,
+            "schema_name": table.schema_name,
+            "data_source_id": table.data_source_id,
+            "description": table.description,
+            "created_at": table.created_at,
+            "updated_at": table.updated_at
+        }
+        tables_dict.append(table_dict)
+    
+    return {
+        "total": total,
+        "data": tables_dict
+    }
 
 @router.get("/{table_id}", response_model=TableMetadataResponse)
 async def get_table(
