@@ -208,30 +208,61 @@ class TableMetadataService:
     @staticmethod
     def delete(db: Session, table_id: int) -> bool:
         """删除表元数据"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
         db_table = db.query(TableMetadata).filter(TableMetadata.id == table_id).first()
         if not db_table:
             return False
         
         # 检查是否有关联的血缘关系
-        # 1. 检查是否作为目标表参与血缘关系
+        # 1. 检查是否作为目标表参与血缘关系（下游依赖）
         if db_table.target_relationships:
-            raise ValueError("无法删除，该表作为目标表参与血缘关系")
+            raise ValueError("存在下游血缘，不可删除！")
         
-        # 2. 检查是否作为源表参与血缘关系
-        from models import LineageRelation
-        source_relations = db.query(LineageRelation).all()
-        for relation in source_relations:
+        # 2. 如果作为源表参与血缘关系（上游依赖），删除相关的血缘关系
+        from models import LineageRelation, ColumnLineageRelation
+        
+        # 删除相关的表级血缘关系
+        logger.info(f"开始删除表 {db_table.name} 的相关血缘关系")
+        
+        # 获取所有表级血缘关系
+        all_table_relations = db.query(LineageRelation).all()
+        for relation in all_table_relations:
             if isinstance(relation.source_table_ids, list) and table_id in relation.source_table_ids:
-                raise ValueError("无法删除，该表作为源表参与血缘关系")
+                # 删除该表级血缘关系
+                logger.info(f"删除表级血缘关系: {relation.id}")
+                # 先删除关联的列级血缘关系
+                column_relations = db.query(ColumnLineageRelation).filter(
+                    ColumnLineageRelation.lineage_relation_id == relation.id
+                ).all()
+                for col_relation in column_relations:
+                    logger.info(f"删除关联的列级血缘关系: {col_relation.id}")
+                    db.delete(col_relation)
+                # 删除表级血缘关系
+                db.delete(relation)
         
-        # 检查是否有列元数据
+        # 删除所有关联的列元数据和相关的列级血缘关系
         if db_table.columns:
-            # 删除所有关联的列元数据
+            logger.info(f"开始删除表 {db_table.name} 的列元数据")
             for column in db_table.columns:
+                # 删除该列相关的列级血缘关系
+                column_relations = db.query(ColumnLineageRelation).filter(
+                    (ColumnLineageRelation.source_column_id == column.id) | 
+                    (ColumnLineageRelation.target_column_id == column.id)
+                ).all()
+                for col_relation in column_relations:
+                    logger.info(f"删除列 {column.name} 的列级血缘关系: {col_relation.id}")
+                    db.delete(col_relation)
+                # 删除列元数据
+                logger.info(f"删除列: {column.name}")
                 db.delete(column)
         
+        # 删除表元数据
+        logger.info(f"删除表: {db_table.name}")
         db.delete(db_table)
         db.commit()
+        logger.info(f"表 {db_table.name} 删除成功")
         return True
     
     @staticmethod

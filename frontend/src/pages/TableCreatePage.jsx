@@ -253,6 +253,50 @@ const TableCreatePage = () => {
     }
   };
 
+  // 删除表
+  const handleDeleteTable = async (tableId, tableName) => {
+    try {
+      // 确认删除对话框
+      Modal.confirm({
+        title: '确认删除',
+        content: `确定要删除表 "${tableName}" 吗？删除后将无法恢复。`,
+        okText: '删除',
+        okType: 'danger',
+        cancelText: '取消',
+        async onOk() {
+          setLoading(true);
+          try {
+            // 调用删除API
+            await tableMetadataApi.delete(tableId);
+            message.success(`表 "${tableName}" 删除成功`);
+            // 刷新表列表
+            fetchTables();
+            // 如果当前正在编辑的表被删除，重置编辑状态
+            if (selectedTableId === tableId) {
+              handleSwitchToCreate();
+            }
+          } catch (error) {
+            // 处理删除失败的情况
+            let errorMsg = `删除表 "${tableName}" 失败`;
+            if (error.response && error.response.data) {
+              const errorData = error.response.data;
+              if (errorData.detail) {
+                // 如果是后端返回的错误信息，直接使用
+                errorMsg = errorData.detail;
+              }
+            }
+            message.error(errorMsg);
+          } finally {
+            setLoading(false);
+          }
+        },
+      });
+    } catch (error) {
+      console.error('删除表失败:', error);
+      message.error('删除表失败');
+    }
+  };
+
   // 保存表结构
   const handleSaveTable = async () => {
     try {
@@ -468,9 +512,14 @@ const TableCreatePage = () => {
                     title: '操作',
                     key: 'action',
                     render: (_, record) => (
-                      <Button type="link" icon={<EditOutlined />} onClick={() => handleSelectTable(record.id)}>
-                        编辑
-                      </Button>
+                      <Space size="middle">
+                        <Button type="link" icon={<EditOutlined />} onClick={() => handleSelectTable(record.id)}>
+                          编辑
+                        </Button>
+                        <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDeleteTable(record.id, record.name)}>
+                          删除
+                        </Button>
+                      </Space>
                     ),
                   },
                 ]}
