@@ -845,25 +845,47 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
         
         # 处理字段血缘关系信息
         if "column_lineages" in data:
-            for lineage_data in data["column_lineages"]:
+            # 验证column_lineages是否为数组
+            if not isinstance(data["column_lineages"], list):
+                result["validation_errors"].append("column_lineages必须是数组格式")
+                return {
+                    "status": "error",
+                    "message": "字段血缘关系JSON文件格式错误",
+                    "result": result
+                }
+            
+            for index, lineage_data in enumerate(data["column_lineages"]):
                 try:
+                    # 验证单个血缘关系条目是否为对象
+                    if not isinstance(lineage_data, dict):
+                        result["validation_errors"].append(f"第{index+1}个血缘关系条目必须是对象格式")
+                        continue
+                    
                     # 检查必要字段
                     required_fields = ["source_db_name", "source_table_name", "source_column_name", 
                                       "target_db_name", "target_table_name", "target_column_name"]
-                    for field in required_fields:
-                        if not lineage_data.get(field):
-                            result["validation_errors"].append(f"字段血缘关系数据缺少必要字段: {field}")
-                            continue
+                    
+                    # 检查必填字段是否存在
+                    missing_fields = [field for field in required_fields if field not in lineage_data]
+                    if missing_fields:
+                        result["validation_errors"].append(f"第{index+1}个血缘关系条目缺少必要字段: {', '.join(missing_fields)}")
+                        continue
+                    
+                    # 检查必填字段是否有值
+                    empty_fields = [field for field in required_fields if not lineage_data.get(field)]
+                    if empty_fields:
+                        result["validation_errors"].append(f"第{index+1}个血缘关系条目字段值不能为空: {', '.join(empty_fields)}")
+                        continue
                     
                     # 获取源数据库和目标数据库
                     source_db = data_source_service.get_by_name(db, lineage_data["source_db_name"])
                     target_db = data_source_service.get_by_name(db, lineage_data["target_db_name"])
                     
                     if not source_db:
-                        result["validation_errors"].append(f"源数据库不存在: {lineage_data['source_db_name']}")
+                        result["validation_errors"].append(f"第{index+1}个血缘关系条目: 源数据库不存在: {lineage_data['source_db_name']}")
                         continue
                     if not target_db:
-                        result["validation_errors"].append(f"目标数据库不存在: {lineage_data['target_db_name']}")
+                        result["validation_errors"].append(f"第{index+1}个血缘关系条目: 目标数据库不存在: {lineage_data['target_db_name']}")
                         continue
                     
                     # 获取源表和目标表
@@ -876,12 +898,12 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
                     
                     if not source_table:
                         result["validation_errors"].append(
-                            f"源表不存在: {lineage_data['source_table_name']} 于数据库 {lineage_data['source_db_name']}"
+                            f"第{index+1}个血缘关系条目: 源表不存在: {lineage_data['source_table_name']} 于数据库 {lineage_data['source_db_name']}"
                         )
                         continue
                     if not target_table:
                         result["validation_errors"].append(
-                            f"目标表不存在: {lineage_data['target_table_name']} 于数据库 {lineage_data['target_db_name']}"
+                            f"第{index+1}个血缘关系条目: 目标表不存在: {lineage_data['target_table_name']} 于数据库 {lineage_data['target_db_name']}"
                         )
                         continue
                     
@@ -895,12 +917,12 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
                     
                     if not source_column:
                         result["validation_errors"].append(
-                            f"源字段不存在: {lineage_data['source_column_name']} 于表 {lineage_data['source_table_name']}"
+                            f"第{index+1}个血缘关系条目: 源字段不存在: {lineage_data['source_column_name']} 于表 {lineage_data['source_table_name']}"
                         )
                         continue
                     if not target_column:
                         result["validation_errors"].append(
-                            f"目标字段不存在: {lineage_data['target_column_name']} 于表 {lineage_data['target_table_name']}"
+                            f"第{index+1}个血缘关系条目: 目标字段不存在: {lineage_data['target_column_name']} 于表 {lineage_data['target_table_name']}"
                         )
                         continue
                     
@@ -929,13 +951,29 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
                     lineage_service.create_column_lineage(db, column_lineage_create)
                     result["column_lineages"]["created"] += 1
                 except Exception as e:
-                    result["validation_errors"].append(f"处理字段血缘关系时出错: {str(e)}")
+                    result["validation_errors"].append(f"第{index+1}个血缘关系条目处理出错: {str(e)}")
+        else:
+            result["validation_errors"].append("JSON文件缺少必要的column_lineages字段")
         
-        return {
-            "status": "success" if not result["validation_errors"] else "partial_success",
-            "message": "字段血缘关系JSON文件上传并解析" + ("成功" if not result["validation_errors"] else "，但有验证错误"),
-            "result": result
-        }
+        # 根据结果返回不同状态
+        if result["validation_errors"]:
+            # 统计错误数量
+            error_count = len(result["validation_errors"])
+            return {
+                "status": "error" if result["column_lineages"]["created"] == 0 else "partial_success",
+                "message": f"字段血缘关系导入{error_count}个错误",
+                "result": {
+                    "column_lineages": result["column_lineages"],
+                    "validation_errors": result["validation_errors"],
+                    "error_count": error_count
+                }
+            }
+        else:
+            return {
+                "status": "success",
+                "message": "字段血缘关系JSON文件上传并解析成功",
+                "result": result
+            }
         
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="JSON文件格式错误，无法解析")

@@ -41,9 +41,10 @@ class ColumnMetadataService:
     
     @staticmethod
     def get_by_name_and_table(db: Session, name: str, table_id: int) -> Optional[ColumnMetadata]:
-        """根据名称和表ID获取列元数据"""
+        """根据名称和表ID获取列元数据，支持大小写不敏感匹配"""
+        from sqlalchemy import func
         return db.query(ColumnMetadata).filter(
-            ColumnMetadata.name == name,
+            func.lower(ColumnMetadata.name) == func.lower(name),
             ColumnMetadata.table_id == table_id
         ).first()
     
