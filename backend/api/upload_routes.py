@@ -575,11 +575,44 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
                 except Exception as e:
                     result["validation_errors"].append(f"处理血缘关系时出错: {str(e)}")
         
-        return {
-            "status": "success" if not result["validation_errors"] else "partial_success",
-            "message": "表血缘关系Excel文件上传并解析" + ("成功" if not result["validation_errors"] else "，但有验证错误"),
-            "result": result
-        }
+        # 根据结果返回不同状态
+        if result["validation_errors"]:
+            # 统计错误数量
+            error_count = len(result["validation_errors"])
+            # 计算成功导入的数量
+            success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            
+            # 确定状态和消息
+            if success_count == 0:
+                # 完全失败
+                status = "error"
+                message = f"表血缘关系导入失败，共{error_count}个错误"
+            else:
+                # 部分成功
+                status = "partial_success"
+                message = f"表血缘关系导入完成，成功{success_count}个，失败{error_count}个"
+            
+            return {
+                "status": status,
+                "message": message,
+                "result": {
+                    "lineages": result["lineages"],
+                    "validation_errors": result["validation_errors"],
+                    "error_count": error_count,
+                    "success_count": success_count
+                }
+            }
+        else:
+            # 完全成功
+            success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            return {
+                "status": "success",
+                "message": f"表血缘关系导入成功，共{success_count}个",
+                "result": {
+                    "lineages": result["lineages"],
+                    "success_count": success_count
+                }
+            }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"处理表血缘关系Excel文件时出错: {str(e)}")
@@ -685,11 +718,44 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                 except Exception as e:
                     result["validation_errors"].append(f"处理血缘关系时出错: {str(e)}")
         
-        return {
-            "status": "success" if not result["validation_errors"] else "partial_success",
-            "message": "表血缘关系JSON文件上传并解析" + ("成功" if not result["validation_errors"] else "，但有验证错误"),
-            "result": result
-        }
+        # 根据结果返回不同状态
+        if result["validation_errors"]:
+            # 统计错误数量
+            error_count = len(result["validation_errors"])
+            # 计算成功导入的数量
+            success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            
+            # 确定状态和消息
+            if success_count == 0:
+                # 完全失败
+                status = "error"
+                message = f"表血缘关系导入失败，共{error_count}个错误"
+            else:
+                # 部分成功
+                status = "partial_success"
+                message = f"表血缘关系导入完成，成功{success_count}个，失败{error_count}个"
+            
+            return {
+                "status": status,
+                "message": message,
+                "result": {
+                    "lineages": result["lineages"],
+                    "validation_errors": result["validation_errors"],
+                    "error_count": error_count,
+                    "success_count": success_count
+                }
+            }
+        else:
+            # 完全成功
+            success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            return {
+                "status": "success",
+                "message": f"表血缘关系导入成功，共{success_count}个",
+                "result": {
+                    "lineages": result["lineages"],
+                    "success_count": success_count
+                }
+            }
         
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="JSON文件格式错误，无法解析")
