@@ -959,20 +959,39 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
         if result["validation_errors"]:
             # 统计错误数量
             error_count = len(result["validation_errors"])
+            # 计算成功导入的数量
+            success_count = result["column_lineages"]["created"]
+            
+            # 确定状态和消息
+            if success_count == 0:
+                # 完全失败
+                status = "error"
+                message = f"字段血缘关系导入失败，共{error_count}个错误"
+            else:
+                # 部分成功
+                status = "partial_success"
+                message = f"字段血缘关系导入完成，成功{success_count}个，失败{error_count}个"
+            
             return {
-                "status": "error" if result["column_lineages"]["created"] == 0 else "partial_success",
-                "message": f"字段血缘关系导入{error_count}个错误",
+                "status": status,
+                "message": message,
                 "result": {
                     "column_lineages": result["column_lineages"],
                     "validation_errors": result["validation_errors"],
-                    "error_count": error_count
+                    "error_count": error_count,
+                    "success_count": success_count
                 }
             }
         else:
+            # 完全成功
+            success_count = result["column_lineages"]["created"]
             return {
                 "status": "success",
-                "message": "字段血缘关系JSON文件上传并解析成功",
-                "result": result
+                "message": f"字段血缘关系导入成功，共{success_count}个",
+                "result": {
+                    "column_lineages": result["column_lineages"],
+                    "success_count": success_count
+                }
             }
         
     except json.JSONDecodeError:

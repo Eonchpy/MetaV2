@@ -106,13 +106,14 @@ class TableMetadataService:
     
     @staticmethod
     def get_by_name_and_source(db: Session, name: str, data_source_id: int, schema_name: Optional[str] = None) -> Optional[TableMetadata]:
-        """根据名称和数据源获取表元数据"""
+        """根据名称和数据源获取表元数据，支持大小写不敏感匹配"""
+        from sqlalchemy import func
         query = db.query(TableMetadata).filter(
-            TableMetadata.name == name,
+            func.lower(TableMetadata.name) == func.lower(name),
             TableMetadata.data_source_id == data_source_id
         )
         if schema_name is not None:
-            query = query.filter(TableMetadata.schema_name == schema_name)
+            query = query.filter(func.lower(TableMetadata.schema_name) == func.lower(schema_name))
         return query.first()
     
     @staticmethod
