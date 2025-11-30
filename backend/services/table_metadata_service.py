@@ -212,8 +212,16 @@ class TableMetadataService:
             return False
         
         # 检查是否有关联的血缘关系
-        if db_table.source_relationships or db_table.target_relationships:
-            raise ValueError("无法删除，该表参与血缘关系")
+        # 1. 检查是否作为目标表参与血缘关系
+        if db_table.target_relationships:
+            raise ValueError("无法删除，该表作为目标表参与血缘关系")
+        
+        # 2. 检查是否作为源表参与血缘关系
+        from models import LineageRelation
+        source_relations = db.query(LineageRelation).all()
+        for relation in source_relations:
+            if isinstance(relation.source_table_ids, list) and table_id in relation.source_table_ids:
+                raise ValueError("无法删除，该表作为源表参与血缘关系")
         
         # 检查是否有列元数据
         if db_table.columns:

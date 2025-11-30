@@ -96,11 +96,19 @@ class DataSourceService:
                     # 导入LineageRelation模型
                     from models import LineageRelation
                     # 删除所有引用此表的血缘关系记录
-                    lineage_relations = db.query(LineageRelation).filter(
-                        (LineageRelation.source_table_id == table.id) | 
-                        (LineageRelation.target_table_id == table.id)
-                    ).all()
-                    for relation in lineage_relations:
+                    # 先获取所有血缘关系
+                    all_lineage_relations = db.query(LineageRelation).all()
+                    # 筛选出需要删除的血缘关系
+                    lineage_relations_to_delete = []
+                    for relation in all_lineage_relations:
+                        # 检查是否作为目标表
+                        if relation.target_table_id == table.id:
+                            lineage_relations_to_delete.append(relation)
+                        # 检查是否作为源表之一
+                        elif isinstance(relation.source_table_ids, list) and table.id in relation.source_table_ids:
+                            lineage_relations_to_delete.append(relation)
+                    # 删除筛选出的血缘关系
+                    for relation in lineage_relations_to_delete:
                         db.delete(relation)
                     # 再删除表元数据
                     db.delete(table)
