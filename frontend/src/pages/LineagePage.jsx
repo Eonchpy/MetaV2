@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table, AutoComplete } from 'antd';
+import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table, AutoComplete, Radio } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import * as echarts from 'echarts';
 import axios from 'axios';
@@ -30,6 +30,12 @@ const LineagePage = () => {
   const [tableLineageList, setTableLineageList] = useState([]);
   const [columnLineageList, setColumnLineageList] = useState([]);
   const [form] = Form.useForm();
+  
+  // 血缘图深度和方向控制
+  const [depth, setDepth] = useState(2); // 默认深度为2
+  const [direction, setDirection] = useState("both"); // 默认方向为both
+  const [columnDepth, setColumnDepth] = useState(2); // 列级血缘默认深度为2
+  const [columnDirection, setColumnDirection] = useState("both"); // 列级血缘默认方向为both
   
   // 搜索相关状态，每个标签页独立
   const [searchValues, setSearchValues] = useState({
@@ -191,12 +197,12 @@ const LineagePage = () => {
   // 获取表级血缘关系图数据
   const fetchTableLineageGraph = async (tableId) => {
     console.log('===== fetchTableLineageGraph 开始 =====');
-    console.log(`获取表ID: ${tableId} 的血缘关系图数据`);
+    console.log(`获取表ID: ${tableId} 的血缘关系图数据，深度: ${depth}，方向: ${direction}`);
     
     try {
       setLoading(true);
       console.log('调用lineageApi.getTableLineageGraph');
-      const response = await lineageApi.getTableLineageGraph(tableId);
+      const response = await lineageApi.getTableLineageGraph(tableId, { depth, direction });
       
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
       const tableGraphData = response.data || response;
@@ -226,16 +232,19 @@ const LineagePage = () => {
 
   // 获取列级血缘关系图数据
   const fetchColumnLineageGraph = async (columnId) => {
-    console.log('开始获取列级血缘关系图数据，columnId:', columnId);
+    console.log('开始获取列级血缘关系图数据，columnId:', columnId, '深度:', columnDepth, '方向:', columnDirection);
     try {
       setLoading(true);
       console.log('调用lineageApi.getColumnLineageGraph');
-      // 直接调用axios，确保使用正确的API路径
-      const response = await axios.get(`http://localhost:8000/api/lineages/column/graph/${columnId}`);
-      console.log('成功获取列级血缘关系图数据:', response.data);
+      // 使用封装的API调用，传递depth和direction参数
+      const response = await lineageApi.getColumnLineageGraph(columnId, { depth: columnDepth, direction: columnDirection });
+      
+      // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
+      const columnGraphData = response.data || response;
+      console.log('成功获取列级血缘关系图数据:', columnGraphData);
       setGraphData(prev => ({
         ...prev,
-        column: response.data
+        column: columnGraphData
       }));
       // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
@@ -620,6 +629,20 @@ const LineagePage = () => {
     }
   }, [activeTab]);
   
+  // 监听depth和direction变化，重新获取血缘图数据
+  useEffect(() => {
+    if (selectedTables.table) {
+      fetchTableLineageGraph(selectedTables.table.id);
+    }
+  }, [depth, direction]);
+  
+  // 监听columnDepth和columnDirection变化，重新获取列级血缘数据
+  useEffect(() => {
+    if (selectedColumn) {
+      fetchColumnLineageGraph(selectedColumn.id);
+    }
+  }, [columnDepth, columnDirection]);
+  
   // 监听selectedTables变化
   useEffect(() => {
     console.log('===== selectedTables变化监听 =====');
@@ -726,7 +749,7 @@ const LineagePage = () => {
       
       <Tabs activeKey={activeTab} onChange={handleTabChange}>
         <TabPane tab="表级血缘" key="table">
-          <div className="lineage-controls">
+          <div className="lineage-controls" style={{ display: 'flex', alignItems: 'center' }}>
             <AutoComplete
               placeholder="输入表名搜索"
               style={{ width: 300 }}
@@ -751,6 +774,29 @@ const LineagePage = () => {
                 allowClear
               />
             </AutoComplete>
+            
+            {/* 深度控制 */}
+            <Select
+              placeholder="选择深度"
+              style={{ width: 120, marginLeft: 10 }}
+              value={depth}
+              onChange={setDepth}
+            >
+              {[1, 2, 3, 4, 5].map(d => (
+                <Option key={d} value={d}>{d}</Option>
+              ))}
+            </Select>
+            
+            {/* 方向控制 */}
+            <Radio.Group
+              style={{ marginLeft: 10 }}
+              value={direction}
+              onChange={e => setDirection(e.target.value)}
+            >
+              <Radio.Button value="upstream">上游</Radio.Button>
+              <Radio.Button value="downstream">下游</Radio.Button>
+              <Radio.Button value="both">双向</Radio.Button>
+            </Radio.Group>
           </div>
           
           <div className="lineage-chart-container">
@@ -793,7 +839,7 @@ const LineagePage = () => {
               
               <Select
                 placeholder="选择列"
-                style={{ width: 300 }}
+                style={{ width: 300, marginRight: 10 }}
                 onChange={handleColumnChange}
                 loading={loading}
                 allowClear
@@ -807,6 +853,29 @@ const LineagePage = () => {
                 </Option>
               ))}
             </Select>
+            
+            {/* 列级血缘深度控制 */}
+            <Select
+              placeholder="选择深度"
+              style={{ width: 120, marginRight: 10 }}
+              value={columnDepth}
+              onChange={setColumnDepth}
+            >
+              {[1, 2, 3, 4, 5].map(d => (
+                <Option key={d} value={d}>{d}</Option>
+              ))}
+            </Select>
+            
+            {/* 列级血缘方向控制 */}
+            <Radio.Group
+              style={{ marginRight: 10 }}
+              value={columnDirection}
+              onChange={e => setColumnDirection(e.target.value)}
+            >
+              <Radio.Button value="upstream">上游</Radio.Button>
+              <Radio.Button value="downstream">下游</Radio.Button>
+              <Radio.Button value="both">双向</Radio.Button>
+            </Radio.Group>
           </div>
           
           <div className="lineage-chart-container">

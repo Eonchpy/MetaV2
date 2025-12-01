@@ -120,10 +120,10 @@ export const lineageApi = {
   deleteColumnRelation: (id) => api.delete(`/lineages/column/${id}`),
   
   // 获取表级血缘关系图数据
-  getTableLineageGraph: (tableId) => api.get(`/lineages/table/graph/${tableId}`),
+  getTableLineageGraph: (tableId, params = {}) => api.get(`/lineages/table/graph/${tableId}`, { params }),
   
   // 获取列级血缘关系图数据
-  getColumnLineageGraph: (columnId) => api.get(`/lineages/column/graph/${columnId}`)
+  getColumnLineageGraph: (columnId, params = {}) => api.get(`/lineages/column/graph/${columnId}`, { params })
 };
 
 // 上传相关API

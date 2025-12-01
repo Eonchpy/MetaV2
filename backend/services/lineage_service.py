@@ -161,7 +161,7 @@ class LineageService:
                         source_node = LineageNode(
                             id=source_table.id,
                             name=source_table.name,
-                            table_type=source_table.table_type,
+                            table_type=source_table.data_source.type if source_table.data_source else None,
                             data_source=source_table.data_source.name if source_table.data_source else None,
                             description=source_table.description,
                             layer=current_depth,
@@ -208,18 +208,18 @@ class LineageService:
                 
                 if target_table:
                     # 创建目标表节点
-                    target_node = LineageNode(
-                        id=target_table.id,
-                        name=target_table.name,
-                        table_type=target_table.table_type,
-                        data_source=target_table.data_source.name if target_table.data_source else None,
-                        description=target_table.description,
-                        layer=current_depth,
-                        relation_type=relation.relation_type,
-                        relation_description=relation.description,
-                        upstream=[current_id],
-                        downstream=[]
-                    )
+                        target_node = LineageNode(
+                            id=target_table.id,
+                            name=target_table.name,
+                            table_type=target_table.data_source.type if target_table.data_source else None,
+                            data_source=target_table.data_source.name if target_table.data_source else None,
+                            description=target_table.description,
+                            layer=current_depth,
+                            relation_type=relation.relation_type,
+                            relation_description=relation.description,
+                            upstream=[current_id],
+                            downstream=[]
+                        )
                     result.append(target_node)
                     
                     # 递归获取目标表的下游
@@ -386,8 +386,18 @@ class LineageService:
     
     # 血缘关系可视化方法
     @staticmethod
-    def get_table_lineage_graph(db: Session, table_id: int, depth: int = 2) -> dict:
-        """获取表的血缘关系图数据，包括上下游指定深度的表"""
+    def get_table_lineage_graph(db: Session, table_id: int, depth: int = 2, direction: str = "both") -> dict:
+        """获取表的血缘关系图数据，包括上下游指定深度的表
+        
+        Args:
+            db: 数据库会话
+            table_id: 起始表ID
+            depth: 获取的深度，默认为2
+            direction: 方向，可选值："upstream"（只获取上游）、"downstream"（只获取下游）、"both"（获取双向），默认为"both"
+        
+        Returns:
+            包含nodes和edges的字典，nodes包含表节点信息，edges包含血缘关系边信息
+        """
         # 确保输入参数正确
         if isinstance(table_id, str):
             table_id = int(table_id)
@@ -397,12 +407,62 @@ class LineageService:
         if not start_table:
             return {"nodes": [], "edges": []}
         
-        # 直接查询与当前表相关的血缘关系
-        # 1. 查找当前表作为源表的关系
-        # 2. 查找当前表作为目标表的关系
-        
         # 获取所有血缘关系
         all_relations = db.query(LineageRelation).all()
+        
+        # 将血缘关系转换为字典，便于查询
+        # key: (source_id, target_id), value: relation
+        relation_dict = {}
+        # 源表到目标表的映射
+        source_to_targets = {}
+        # 目标表到源表的映射
+        target_to_sources = {}
+        
+        for relation in all_relations:
+            try:
+                # 解析source_table_ids和target_table_id
+                source_ids = []
+                target_id = None
+                
+                # 解析source_table_ids
+                if hasattr(relation, 'source_table_ids'):
+                    src_data = relation.source_table_ids
+                    if isinstance(src_data, list):
+                        source_ids = [int(src_id) for src_id in src_data if isinstance(src_id, (int, str))]
+                    elif isinstance(src_data, str):
+                        # 尝试分割字符串
+                        if ',' in src_data:
+                            source_ids = [int(s.strip()) for s in src_data.split(',') if s.strip().isdigit()]
+                        else:
+                            source_ids = [int(src_data)] if src_data.isdigit() else []
+                
+                # 解析target_table_id
+                if hasattr(relation, 'target_table_id') and relation.target_table_id:
+                    try:
+                        target_id = int(relation.target_table_id)
+                    except (ValueError, TypeError):
+                        continue
+                
+                if not source_ids or target_id is None:
+                    continue
+                
+                # 构建映射关系
+                for src_id in source_ids:
+                    # 源表到目标表的映射
+                    if src_id not in source_to_targets:
+                        source_to_targets[src_id] = []
+                    source_to_targets[src_id].append(target_id)
+                    
+                    # 目标表到源表的映射
+                    if target_id not in target_to_sources:
+                        target_to_sources[target_id] = []
+                    target_to_sources[target_id].append(src_id)
+                    
+                    # 关系字典
+                    relation_dict[(src_id, target_id)] = relation
+            except Exception as e:
+                logger.error(f"Error processing relation: {e}")
+                continue
         
         # 初始化结果
         nodes = []
@@ -418,106 +478,88 @@ class LineageService:
         })
         node_ids.add(table_id)
         
-        # 处理所有血缘关系
-        for relation in all_relations:
-            try:
-                # 跳过没有id的关系
-                if not hasattr(relation, 'id') or relation.id is None:
-                    continue
-                
-                # 处理source_table_ids和target_table_id
-                source_ids = []
-                target_id = None
-                
-                # 解析source_table_ids
-                if hasattr(relation, 'source_table_ids'):
-                    src_data = relation.source_table_ids
-                    if isinstance(src_data, list):
-                        source_ids = src_data
-                    elif isinstance(src_data, str):
-                        # 尝试分割字符串
-                        if ',' in src_data:
-                            source_ids = [s.strip() for s in src_data.split(',')]
-                        else:
-                            source_ids = [src_data]
-                
-                # 解析target_table_id
-                if hasattr(relation, 'target_table_id') and relation.target_table_id:
-                    try:
-                        target_id = int(relation.target_table_id)
-                    except (ValueError, TypeError):
-                        continue
-                
-                # 检查是否与当前表相关
-                is_relevant = False
-                relevant_source_ids = []
-                
-                # 检查每个源表ID
-                for src_id_str in source_ids:
-                    try:
-                        src_id = int(src_id_str)
-                        # 如果源表是当前表，或者目标表是当前表，那么这个关系是相关的
-                        if src_id == table_id or (target_id == table_id):
-                            is_relevant = True
-                            relevant_source_ids.append(src_id)
-                    except (ValueError, TypeError):
-                        continue
-                
-                # 如果关系相关，处理它
-                if is_relevant and target_id:
-                    # 处理每个相关的源表ID
-                    for src_id in relevant_source_ids:
-                        try:
-                            # 添加源表节点（如果尚未添加）
-                            if src_id not in node_ids:
-                                src_table = db.query(TableMetadata).filter(TableMetadata.id == src_id).first()
-                                if src_table:
-                                    nodes.append({
-                                        "id": src_id,
-                                        "name": src_table.name or f"表_{src_id}",
-                                        "type": "table"
-                                    })
-                                    node_ids.add(src_id)
+        # 递归获取多跳链路
+        def get_lineage(current_id, current_depth, visited):
+            if current_depth >= depth:
+                return
+            
+            # 标记当前节点为已访问
+            visited.add(current_id)
+            
+            # 获取上游节点（如果方向允许）
+            if direction in ["upstream", "both"] and current_id in target_to_sources:
+                for source_id in target_to_sources[current_id]:
+                    if source_id not in visited:
+                        # 添加源表节点
+                        if source_id not in node_ids:
+                            src_table = db.query(TableMetadata).filter(TableMetadata.id == source_id).first()
+                            if src_table:
+                                nodes.append({
+                                    "id": source_id,
+                                    "name": src_table.name or f"表_{source_id}",
+                                    "type": "table"
+                                })
+                                node_ids.add(source_id)
+                        
+                        # 添加边
+                        edge_key = f"{source_id}_{current_id}_{relation_dict.get((source_id, current_id), '').id if (source_id, current_id) in relation_dict and hasattr(relation_dict[(source_id, current_id)], 'id') else 'unknown'}"
+                        if edge_key not in edge_keys:
+                            relation = relation_dict.get((source_id, current_id))
+                            rel_type = "关联"
+                            if relation and hasattr(relation, 'relation_type') and isinstance(relation.relation_type, str):
+                                rel_type = relation.relation_type
                             
-                            # 添加目标表节点（如果尚未添加）
-                            if target_id not in node_ids:
-                                tgt_table = db.query(TableMetadata).filter(TableMetadata.id == target_id).first()
-                                if tgt_table:
-                                    nodes.append({
-                                        "id": target_id,
-                                        "name": tgt_table.name or f"表_{target_id}",
-                                        "type": "table"
-                                    })
-                                    node_ids.add(target_id)
+                            edge = {
+                                "id": relation.id if relation and hasattr(relation, 'id') else hash(edge_key),
+                                "source": source_id,
+                                "target": current_id,
+                                "type": "table_lineage",
+                                "relation_type": rel_type
+                            }
+                            edges.append(edge)
+                            edge_keys.add(edge_key)
+                        
+                        # 递归获取上游
+                        get_lineage(source_id, current_depth + 1, visited.copy())
+            
+            # 获取下游节点（如果方向允许）
+            if direction in ["downstream", "both"] and current_id in source_to_targets:
+                for target_id in source_to_targets[current_id]:
+                    if target_id not in visited:
+                        # 添加目标表节点
+                        if target_id not in node_ids:
+                            tgt_table = db.query(TableMetadata).filter(TableMetadata.id == target_id).first()
+                            if tgt_table:
+                                nodes.append({
+                                    "id": target_id,
+                                    "name": tgt_table.name or f"表_{target_id}",
+                                    "type": "table"
+                                })
+                                node_ids.add(target_id)
+                        
+                        # 添加边
+                        edge_key = f"{current_id}_{target_id}_{relation_dict.get((current_id, target_id), '').id if (current_id, target_id) in relation_dict and hasattr(relation_dict[(current_id, target_id)], 'id') else 'unknown'}"
+                        if edge_key not in edge_keys:
+                            relation = relation_dict.get((current_id, target_id))
+                            rel_type = "关联"
+                            if relation and hasattr(relation, 'relation_type') and isinstance(relation.relation_type, str):
+                                rel_type = relation.relation_type
                             
-                            # 创建边的唯一标识
-                            edge_key = f"{src_id}_{target_id}_{relation.id}"
-                            
-                            # 避免重复添加边
-                            if edge_key not in edge_keys:
-                                # 获取关系类型
-                                rel_type = "关联"
-                                if hasattr(relation, 'relation_type') and isinstance(relation.relation_type, str):
-                                    rel_type = relation.relation_type
-                                
-                                # 创建边
-                                edge = {
-                                    "id": relation.id,
-                                    "source": src_id,
-                                    "target": target_id,
-                                    "type": "table_lineage",
-                                    "relation_type": rel_type
-                                }
-                                
-                                # 添加边到列表
-                                edges.append(edge)
-                                edge_keys.add(edge_key)
-                        except Exception as e:
-                            print(f"Error processing edge {src_id}->{target_id}: {e}")
-                            continue
-            except Exception as e:
-                print(f"Error processing relation: {e}")
-                continue
+                            edge = {
+                                "id": relation.id if relation and hasattr(relation, 'id') else hash(edge_key),
+                                "source": current_id,
+                                "target": target_id,
+                                "type": "table_lineage",
+                                "relation_type": rel_type
+                            }
+                            edges.append(edge)
+                            edge_keys.add(edge_key)
+                        
+                        # 递归获取下游
+                        get_lineage(target_id, current_depth + 1, visited.copy())
+        
+        # 开始递归获取多跳链路
+        get_lineage(table_id, 0, set())
         
         # 构建最终结果
         result = {
@@ -528,7 +570,7 @@ class LineageService:
         return result
     
     @staticmethod
-    def get_column_lineage_graph(db: Session, column_id: int, depth: int = 2) -> LineageGraphResponse:
+    def get_column_lineage_graph(db: Session, column_id: int, depth: int = 2, direction: str = "both") -> LineageGraphResponse:
         """获取列的血缘关系图数据，包括上下游指定深度的列"""
         # 创建图
         G = nx.DiGraph()
@@ -604,9 +646,11 @@ class LineageService:
         table_nodes.add(start_table.id)
         table_column_edges.add((start_table.id, column_id))
         
-        # 获取上下游列
-        get_upstream_columns(column_id, 0)
-        get_downstream_columns(column_id, 0)
+        # 根据方向获取列级血缘关系
+        if direction in ["up", "both"]:
+            get_upstream_columns(column_id, 0)
+        if direction in ["down", "both"]:
+            get_downstream_columns(column_id, 0)
         
         # 构建图响应数据
         node_list = []

@@ -72,11 +72,11 @@ npm run dev
 ## 主要API端点
 
 ### 数据源管理
-- `GET /api/datasources` - 获取数据源列表
-- `POST /api/datasources` - 创建新数据源
-- `GET /api/datasources/{id}` - 获取单个数据源详情
-- `PUT /api/datasources/{id}` - 更新数据源
-- `DELETE /api/datasources/{id}` - 删除数据源
+- `GET /api/data-sources` - 获取数据源列表
+- `POST /api/data-sources` - 创建新数据源
+- `GET /api/data-sources/{id}` - 获取单个数据源详情
+- `PUT /api/data-sources/{id}` - 更新数据源
+- `DELETE /api/data-sources/{id}` - 删除数据源
 
 ### 元数据管理
 - `GET /api/tables` - 获取表元数据列表
