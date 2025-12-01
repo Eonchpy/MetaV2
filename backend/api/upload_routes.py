@@ -57,13 +57,21 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
         if "data_sources" in excel_data.sheet_names:
             data_sources_df = pd.read_excel(excel_data, "data_sources")
             for _, row in data_sources_df.iterrows():
+                # 构建正确的数据源数据结构，将非模型字段放入connection_config
+                source_type = row.get("source_type")
+                # 确保数据源类型为小写，兼容枚举值
+                if source_type:
+                    source_type = source_type.lower()
+                
                 source_data = {
                     "name": row.get("name"),
                     "description": row.get("description", ""),
-                    "source_type": row.get("source_type"),
-                    "connection_string": row.get("connection_string", ""),
-                    "schema_name": row.get("schema_name", ""),
-                    "is_active": row.get("is_active", True)
+                    "type": source_type,  # 映射source_type到type，确保小写
+                    "connection_config": {
+                        "connection_string": row.get("connection_string", ""),
+                        "schema_name": row.get("schema_name", ""),
+                        "is_active": row.get("is_active", True)
+                    }
                 }
                 
                 # 检查数据源是否已存在
@@ -96,14 +104,15 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
                 if not source:
                     continue
                 
+                # 构建正确的表元数据结构，将非模型字段放入properties
                 table_data = {
                     "data_source_id": source.id,
                     "name": row.get("name"),
                     "description": row.get("description", ""),
-                    "table_type": row.get("table_type", "TABLE"),
-                    "row_count": row.get("row_count", 0),
-                    "created_at": row.get("created_at"),
-                    "updated_at": row.get("updated_at")
+                    "properties": {
+                        "table_type": row.get("table_type", "TABLE"),
+                        "row_count": row.get("row_count", 0)
+                    }
                 }
                 
                 # 检查表是否已存在
@@ -111,8 +120,10 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
                     db, table_data["name"], source.id
                 )
                 if existing_table:
-                    # 更新现有表
-                    table_metadata_service.update(db, existing_table.id, table_data)
+                    # 更新现有表 - 使用正确的Pydantic模型
+                    from models.schemas import TableMetadataUpdate
+                    table_update = TableMetadataUpdate(**table_data)
+                    table_metadata_service.update(db, existing_table.id, table_update)
                     result["tables"]["updated"] += 1
                 else:
                     # 创建新表
@@ -134,15 +145,18 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
                 if not table:
                     continue
                 
+                # 构建正确的列元数据结构，将非模型字段放入properties
                 column_data = {
                     "table_id": table.id,
                     "name": row.get("name"),
                     "data_type": row.get("data_type"),
                     "description": row.get("description", ""),
                     "is_primary_key": row.get("is_primary_key", False),
-                    "is_nullable": row.get("is_nullable", True),
-                    "column_order": row.get("column_order", 0),
-                    "length": row.get("length")
+                    "properties": {
+                        "is_nullable": row.get("is_nullable", True),
+                        "column_order": row.get("column_order", 0),
+                        "length": row.get("length")
+                    }
                 }
                 
                 # 检查列是否已存在
@@ -150,8 +164,10 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
                     db, column_data["name"], table.id
                 )
                 if existing_column:
-                    # 更新现有列
-                    column_metadata_service.update(db, existing_column.id, column_data)
+                    # 更新现有列 - 使用正确的Pydantic模型
+                    from models.schemas import ColumnMetadataUpdate
+                    column_update = ColumnMetadataUpdate(**column_data)
+                    column_metadata_service.update(db, existing_column.id, column_update)
                     result["columns"]["updated"] += 1
                 else:
                     # 创建新列
@@ -201,7 +217,7 @@ async def upload_excel_file(file: UploadFile = File(...), db: Session = Depends(
                 
                 # 对于表级血缘关系，使用LineageRelationCreate
                 lineage_create = LineageRelationCreate(
-                    source_table_id=lineage_data["source_table_id"],
+                    source_table_ids=[lineage_data["source_table_id"]],
                     target_table_id=lineage_data["target_table_id"],
                     relation_type=lineage_data.get("lineage_type", "TRANSFORMATION"),
                     description=lineage_data.get("description", ""),
@@ -548,7 +564,7 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
                     
                     # 对于表级血缘关系，使用LineageRelationCreate
                     lineage_create = LineageRelationCreate(
-                        source_table_id=lineage_data["source_table_id"],
+                        source_table_ids=[lineage_data["source_table_id"]],
                         target_table_id=lineage_data["target_table_id"],
                         relation_type=lineage_data.get("relation_type", "TRANSFORMATION"),
                         description=lineage_data.get("description", ""),
@@ -691,7 +707,7 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                     
                     # 对于表级血缘关系，使用LineageRelationCreate
                     lineage_create = LineageRelationCreate(
-                        source_table_id=source_table.id,
+                        source_table_ids=[source_table.id],
                         target_table_id=target_table.id,
                         relation_type=lineage_data.get("relation_type", "TRANSFORMATION"),
                         description=lineage_data.get("description", ""),
@@ -846,7 +862,7 @@ async def upload_column_lineage_excel(file: UploadFile = File(...), db: Session 
                     if not table_lineage:
                         # 创建表级血缘关系
                         lineage_create = LineageRelationCreate(
-                            source_table_id=source_table.id,
+                            source_table_ids=[source_table.id],
                             target_table_id=target_table.id,
                             relation_type=row.get("relation_type", "TRANSFORMATION"),
                             description=row.get("description", ""),
@@ -999,7 +1015,7 @@ async def upload_column_lineage_json(file: UploadFile = File(...), db: Session =
                     if not table_lineage:
                         # 创建表级血缘关系
                         lineage_create = LineageRelationCreate(
-                            source_table_id=source_table.id,
+                            source_table_ids=[source_table.id],
                             target_table_id=target_table.id,
                             relation_type=lineage_data.get("relation_type", "TRANSFORMATION"),
                             description=lineage_data.get("description", ""),

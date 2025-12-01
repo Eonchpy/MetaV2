@@ -220,10 +220,10 @@ class LineageService:
                             upstream=[current_id],
                             downstream=[]
                         )
-                    result.append(target_node)
+                        result.append(target_node)
                     
                     # 递归获取目标表的下游
-                    dfs(target_table.id, current_depth + 1)
+                        dfs(target_table.id, current_depth + 1)
         
         dfs(table_id, 1)
         return result
