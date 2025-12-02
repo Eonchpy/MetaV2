@@ -30,11 +30,46 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
 
   // 显示上传统计信息
   const showUploadStats = (result) => {
-    setImportResult(result);
+    // 转换后端返回的数据格式为前端组件期望的格式
+    let formattedResult = {
+      total: 0,
+      success: 0,
+      failed: 0,
+      lineages_created: 0,
+      failed_reasons: [],
+      validation_errors: []
+    };
+    
+    // 处理后端返回的不同格式
+    if (result.result) {
+      // 后端返回的格式：{ status, message, result: { column_lineages, validation_errors, error_count, success_count } }
+      formattedResult.total = (result.result.success_count || 0) + (result.result.error_count || 0);
+      formattedResult.success = result.result.success_count || 0;
+      formattedResult.failed = result.result.error_count || 0;
+      formattedResult.lineages_created = result.result.column_lineages?.created || 0;
+      formattedResult.validation_errors = result.result.validation_errors || [];
+      
+      // 处理failed_reasons，将validation_errors作为failed_reasons
+      if (result.result.validation_errors && result.result.validation_errors.length > 0) {
+        formattedResult.failed_reasons = result.result.validation_errors;
+      }
+      
+      // 添加消息
+      formattedResult.message = result.message || '';
+    } else {
+      // 直接使用返回的结果（旧格式兼容）
+      formattedResult = {
+        ...formattedResult,
+        ...result
+      };
+    }
+    
+    setImportResult(formattedResult);
     setErrorDetail(null);
+    
     // 处理验证错误
-    if (result.validation_errors && result.validation_errors.length > 0) {
-      setValidationErrors(result.validation_errors);
+    if (formattedResult.validation_errors && formattedResult.validation_errors.length > 0) {
+      setValidationErrors(formattedResult.validation_errors);
     }
   };
 
@@ -107,7 +142,6 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
       const result = await uploadApi.uploadColumnLineageExcel(file);
       
       // 显示上传结果统计
-      message.success('字段血缘关系Excel文件上传成功！');
       showUploadStats(result);
       
       if (onSuccess) {
@@ -133,7 +167,6 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
       const result = await uploadApi.uploadColumnLineageJson(file);
       
       // 显示上传结果统计
-      message.success('字段血缘关系JSON文件上传成功！');
       showUploadStats(result);
       
       if (onSuccess) {
@@ -177,6 +210,110 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
   const renderImportResult = () => {
     if (!importResult && !errorDetail) return null;
 
+    // 处理全部失败的情况
+    if (importResult && importResult.total > 0 && importResult.success === 0) {
+      return (
+        <Result
+          status="error"
+          title="全部导入失败"
+          subTitle={`共处理 ${importResult.total || 0} 条字段血缘关系，全部失败`}
+          extra={
+            <div>
+              {importResult.failed_reasons && importResult.failed_reasons.length > 0 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <AlertOutlined style={{ color: '#f5222d' }} /> 
+                  <span style={{ color: '#f5222d', marginLeft: '8px', fontWeight: 'bold' }}>失败原因：</span>
+                  <Collapse 
+                    defaultActiveKey={importResult.failed_reasons.length <= 5 ? 
+                      importResult.failed_reasons.map((_, index) => index.toString()) : 
+                      ['0', '1', '2']}
+                  >
+                    {importResult.failed_reasons.map((reason, index) => (
+                      <Panel header={`失败项 ${index + 1}`} key={index.toString()}>
+                        <pre style={{ 
+                          whiteSpace: 'pre-wrap', 
+                          margin: 0, 
+                          backgroundColor: '#fff2f0', 
+                          padding: '12px', 
+                          borderRadius: '4px',
+                          border: '1px solid #ffccc7'
+                        }}>
+                          {reason}
+                        </pre>
+                      </Panel>
+                    ))}
+                  </Collapse>
+                </div>
+              )}
+              {importResult.message && (
+                <div style={{ backgroundColor: '#fff2f0', padding: '16px', borderRadius: '4px', border: '1px solid #ffccc7' }}>
+                  <p style={{ color: '#f5222d', fontWeight: 'bold' }}>系统消息：</p>
+                  <p>{importResult.message}</p>
+                </div>
+              )}
+            </div>
+          }
+        />
+      );
+    }
+
+    // 处理部分成功的情况
+    if (importResult && importResult.failed > 0) {
+      return (
+        <div>
+          {renderValidationErrors()}
+          <Result
+            status="warning"
+            title="部分导入成功"
+            subTitle={`共处理 ${importResult.total || 0} 条字段血缘关系，成功 ${importResult.success || 0} 条，失败 ${importResult.failed || 0} 条`}
+            extra={
+              <div>
+                <div style={{ 
+                  backgroundColor: '#f6ffed', 
+                  padding: '16px', 
+                  borderRadius: '4px', 
+                  marginBottom: '16px',
+                  border: '1px solid #b7eb8f'
+                }}>
+                  <p style={{ color: '#52c41a', fontWeight: 'bold', marginBottom: '8px' }}>成功信息：</p>
+                  <p>成功创建的字段血缘关系数: {importResult.lineages_created || 0}</p>
+                  {importResult.message && <p>系统消息: {importResult.message}</p>}
+                </div>
+                
+                {importResult.failed_reasons && importResult.failed_reasons.length > 0 && ( 
+                  <div>
+                    <AlertOutlined style={{ color: '#faad14' }} /> 
+                    <span style={{ color: '#faad14', marginLeft: '8px', fontWeight: 'bold' }}>失败原因：</span>
+                    <Collapse 
+                      defaultActiveKey={importResult.failed_reasons.length <= 5 ? 
+                        importResult.failed_reasons.map((_, index) => index.toString()) : 
+                        ['0', '1', '2']}
+                    >
+                      {importResult.failed_reasons.map((reason, index) => (
+                        <Panel header={`失败项 ${index + 1}`} key={index.toString()}>
+                          <pre style={{ 
+                            whiteSpace: 'pre-wrap', 
+                            margin: 0, 
+                            backgroundColor: '#fff7e6', 
+                            padding: '12px', 
+                            borderRadius: '4px',
+                            border: '1px solid #ffe7ba'
+                          }}>
+                            {reason}
+                          </pre>
+                        </Panel>
+                      ))}
+                    </Collapse>
+                  </div>
+                )}
+              </div>
+            }
+          />
+        </div>
+      );
+    }
+
+    // 处理全部成功的情况
     if (errorDetail) {
       return (
         <Result
@@ -184,7 +321,13 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
           title="导入失败"
           subTitle="请检查以下错误："
           extra={
-            <div style={{ backgroundColor: '#fff2f0', padding: '16px', borderRadius: '4px', whiteSpace: 'pre-wrap' }}>
+            <div style={{ 
+              backgroundColor: '#fff2f0', 
+              padding: '16px', 
+              borderRadius: '4px', 
+              whiteSpace: 'pre-wrap',
+              border: '1px solid #ffccc7'
+            }}>
               {errorDetail}
             </div>
           }
@@ -192,20 +335,24 @@ const ColumnLineageImport = ({ visible, onCancel, onSuccess }) => {
       );
     }
 
+    // 处理全部成功且无验证错误的情况
     return (
       <div>
         {renderValidationErrors()}
         <Result
-          status={validationErrors.length > 0 ? "warning" : "success"}
-          title={validationErrors.length > 0 ? "部分导入成功" : "导入成功"}
-          subTitle={`共处理 ${importResult.total || 0} 条字段血缘关系，成功 ${importResult.success || 0} 条，失败 ${importResult.failed || 0} 条`}
+          status="success"
+          title="全部导入成功"
+          subTitle={`共处理 ${importResult.total || 0} 条字段血缘关系，全部成功导入`}
           extra={
-            <div style={{ backgroundColor: '#f6ffed', padding: '16px', borderRadius: '4px' }}>
+            <div style={{ 
+              backgroundColor: '#f6ffed', 
+              padding: '16px', 
+              borderRadius: '4px',
+              border: '1px solid #b7eb8f'
+            }}>
+              <p style={{ color: '#52c41a', fontWeight: 'bold', marginBottom: '8px' }}>成功信息：</p>
               <p>成功创建的字段血缘关系数: {importResult.lineages_created || 0}</p>
-              {importResult.message && <p>消息: {importResult.message}</p>}
-              {validationErrors.length > 0 && (
-                <p style={{ color: '#faad14' }}>注意: 存在 {validationErrors.length} 条验证警告，已部分导入成功的关系</p>
-              )}
+              {importResult.message && <p>系统消息: {importResult.message}</p>}
             </div>
           }
         />

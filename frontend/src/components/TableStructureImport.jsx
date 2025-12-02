@@ -99,7 +99,6 @@ const TableStructureImport = ({ visible, onCancel, onSuccess }) => {
       const result = await uploadApi.uploadTableStructureExcel(file);
       
       // 显示上传结果统计
-      message.success('表结构Excel文件上传成功！');
       showUploadStats(result);
       
       if (onSuccess) {
@@ -125,7 +124,6 @@ const TableStructureImport = ({ visible, onCancel, onSuccess }) => {
       const result = await uploadApi.uploadTableStructureJson(file);
       
       // 显示上传结果统计
-      message.success('表结构JSON文件上传成功！');
       showUploadStats(result);
       
       if (onSuccess) {

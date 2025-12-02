@@ -24,7 +24,6 @@ const ImportPage = () => {
 
   // 处理导入成功
   const handleImportSuccess = (result) => {
-    message.success('数据导入成功，系统将自动刷新');
     // 当表结构导入成功时，强制刷新血缘配置模态框的表数据
     if (result) {
       // 设置刷新标志，用于强制重新加载表数据

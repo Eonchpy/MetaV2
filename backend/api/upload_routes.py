@@ -505,10 +505,15 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
     - Sheet名称: lineages
     - 必要字段: source_db_name, source_table_name, target_db_name, target_table_name
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not file.filename.endswith(('.xlsx', '.xls')):
+        logger.error(f"文件格式错误，只支持Excel文件: {file.filename}")
         raise HTTPException(status_code=400, detail="只支持Excel文件格式(.xlsx, .xls)")
     
     try:
+        logger.info(f"开始处理表血缘关系Excel文件: {file.filename}")
         # 读取上传的Excel文件
         contents = await file.read()
         excel_data = pd.ExcelFile(io.BytesIO(contents))
@@ -521,18 +526,27 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
         
         # 处理血缘关系信息
         if "lineages" in excel_data.sheet_names:
+            logger.info(f"找到lineages工作表，开始处理")
             lineages_df = pd.read_excel(excel_data, "lineages")
-            for _, row in lineages_df.iterrows():
+            logger.info(f"共找到 {len(lineages_df)} 条血缘关系数据")
+            
+            for index, row in lineages_df.iterrows():
                 try:
+                    logger.info(f"处理第 {index+1} 条血缘关系数据: {row.get('source_db_name')}.{row.get('source_table_name')} -> {row.get('target_db_name')}.{row.get('target_table_name')}")
+                    
                     # 获取源表和目标表
                     source_db = data_source_service.get_by_name(db, row.get("source_db_name"))
                     target_db = data_source_service.get_by_name(db, row.get("target_db_name"))
                     
                     if not source_db:
-                        result["validation_errors"].append(f"源数据库不存在: {row.get('source_db_name')}")
+                        error_msg = f"源数据库不存在: {row.get('source_db_name')}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     if not target_db:
-                        result["validation_errors"].append(f"目标数据库不存在: {row.get('target_db_name')}")
+                        error_msg = f"目标数据库不存在: {row.get('target_db_name')}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     
                     source_table = table_metadata_service.get_by_name_and_source(
@@ -543,14 +557,14 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
                     )
                     
                     if not source_table:
-                        result["validation_errors"].append(
-                            f"源表不存在: {row.get('source_table_name')} 于数据库 {row.get('source_db_name')}"
-                        )
+                        error_msg = f"源表不存在: {row.get('source_table_name')} 于数据库 {row.get('source_db_name')}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     if not target_table:
-                        result["validation_errors"].append(
-                            f"目标表不存在: {row.get('target_table_name')} 于数据库 {row.get('target_db_name')}"
-                        )
+                        error_msg = f"目标表不存在: {row.get('target_table_name')} 于数据库 {row.get('target_db_name')}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     
                     # 构建血缘关系数据
@@ -584,14 +598,23 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
                         )
                         lineage_service.update_table_lineage(db, existing_lineage.id, lineage_update)
                         result["lineages"]["updated"] += 1
+                        logger.info(f"更新表级血缘关系成功: {source_table.name} -> {target_table.name}")
                     else:
                         # 创建新表级血缘关系
                         lineage_service.create_table_lineage(db, lineage_create)
                         result["lineages"]["created"] += 1
+                        logger.info(f"创建表级血缘关系成功: {source_table.name} -> {target_table.name}")
                 except Exception as e:
-                    result["validation_errors"].append(f"处理血缘关系时出错: {str(e)}")
+                    error_msg = f"处理第 {index+1} 条血缘关系时出错: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    result["validation_errors"].append(error_msg)
+        else:
+            logger.warning(f"未找到lineages工作表")
+            result["validation_errors"].append("未找到lineages工作表")
         
         # 根据结果返回不同状态
+        logger.info(f"表血缘关系处理完成，创建: {result['lineages']['created']}，更新: {result['lineages']['updated']}，错误: {len(result['validation_errors'])}")
+        
         if result["validation_errors"]:
             # 统计错误数量
             error_count = len(result["validation_errors"])
@@ -603,10 +626,12 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
                 # 完全失败
                 status = "error"
                 message = f"表血缘关系导入失败，共{error_count}个错误"
+                logger.error(message)
             else:
                 # 部分成功
                 status = "partial_success"
                 message = f"表血缘关系导入完成，成功{success_count}个，失败{error_count}个"
+                logger.warning(message)
             
             return {
                 "status": status,
@@ -621,9 +646,11 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
         else:
             # 完全成功
             success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            message = f"表血缘关系导入成功，共{success_count}个"
+            logger.info(message)
             return {
                 "status": "success",
-                "message": f"表血缘关系导入成功，共{success_count}个",
+                "message": message,
                 "result": {
                     "lineages": result["lineages"],
                     "success_count": success_count
@@ -631,6 +658,7 @@ async def upload_table_lineage_excel(file: UploadFile = File(...), db: Session =
             }
         
     except Exception as e:
+        logger.error(f"处理表血缘关系Excel文件时出错: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"处理表血缘关系Excel文件时出错: {str(e)}")
 
 @router.post("/table-lineage/json", response_model=Dict[str, Any])
@@ -652,13 +680,21 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
         ]
     }
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     if not file.filename.endswith('.json'):
+        logger.error(f"文件格式错误，只支持JSON文件: {file.filename}")
         raise HTTPException(status_code=400, detail="只支持JSON文件格式(.json)")
     
     try:
+        logger.info(f"开始处理表血缘关系JSON文件: {file.filename}")
+        
         # 读取上传的JSON文件
         contents = await file.read()
         data = json.loads(contents)
+        
+        logger.info(f"成功读取JSON文件，开始解析血缘关系数据")
         
         # 处理结果统计
         result = {
@@ -668,12 +704,18 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
         
         # 处理血缘关系信息
         if "lineages" in data:
-            for lineage_data in data["lineages"]:
+            logger.info(f"找到lineages字段，共包含 {len(data['lineages'])} 条血缘关系数据")
+            
+            for index, lineage_data in enumerate(data["lineages"]):
                 try:
+                    logger.info(f"处理第 {index+1} 条血缘关系数据: {lineage_data.get('source_db_name')}.{lineage_data.get('source_table_name')} -> {lineage_data.get('target_db_name')}.{lineage_data.get('target_table_name')}")
+                    
                     # 检查必要字段
                     if not lineage_data.get("source_db_name") or not lineage_data.get("source_table_name") or \
                        not lineage_data.get("target_db_name") or not lineage_data.get("target_table_name"):
-                        result["validation_errors"].append("血缘关系数据缺少必要字段")
+                        error_msg = f"第 {index+1} 条血缘关系数据缺少必要字段"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     
                     # 获取源表和目标表
@@ -681,10 +723,14 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                     target_db = data_source_service.get_by_name(db, lineage_data["target_db_name"])
                     
                     if not source_db:
-                        result["validation_errors"].append(f"源数据库不存在: {lineage_data['source_db_name']}")
+                        error_msg = f"第 {index+1} 条血缘关系数据: 源数据库不存在: {lineage_data['source_db_name']}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     if not target_db:
-                        result["validation_errors"].append(f"目标数据库不存在: {lineage_data['target_db_name']}")
+                        error_msg = f"第 {index+1} 条血缘关系数据: 目标数据库不存在: {lineage_data['target_db_name']}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     
                     source_table = table_metadata_service.get_by_name_and_source(
@@ -695,14 +741,14 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                     )
                     
                     if not source_table:
-                        result["validation_errors"].append(
-                            f"源表不存在: {lineage_data['source_table_name']} 于数据库 {lineage_data['source_db_name']}"
-                        )
+                        error_msg = f"第 {index+1} 条血缘关系数据: 源表不存在: {lineage_data['source_table_name']} 于数据库 {lineage_data['source_db_name']}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     if not target_table:
-                        result["validation_errors"].append(
-                            f"目标表不存在: {lineage_data['target_table_name']} 于数据库 {lineage_data['target_db_name']}"
-                        )
+                        error_msg = f"第 {index+1} 条血缘关系数据: 目标表不存在: {lineage_data['target_table_name']} 于数据库 {lineage_data['target_db_name']}"
+                        logger.warning(error_msg)
+                        result["validation_errors"].append(error_msg)
                         continue
                     
                     # 对于表级血缘关系，使用LineageRelationCreate
@@ -727,14 +773,25 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                         )
                         lineage_service.update_table_lineage(db, existing_lineage.id, lineage_update)
                         result["lineages"]["updated"] += 1
+                        logger.info(f"第 {index+1} 条血缘关系数据: 更新表级血缘关系成功: {source_table.name} -> {target_table.name}")
                     else:
                         # 创建新表级血缘关系
                         lineage_service.create_table_lineage(db, lineage_create)
                         result["lineages"]["created"] += 1
+                        logger.info(f"第 {index+1} 条血缘关系数据: 创建表级血缘关系成功: {source_table.name} -> {target_table.name}")
                 except Exception as e:
-                    result["validation_errors"].append(f"处理血缘关系时出错: {str(e)}")
+                    error_msg = f"第 {index+1} 条血缘关系数据处理出错: {str(e)}"
+                    logger.error(error_msg, exc_info=True)
+                    result["validation_errors"].append(error_msg)
+        else:
+            # JSON文件中没有lineages字段
+            error_msg = "JSON文件缺少必要的lineages字段"
+            logger.warning(error_msg)
+            result["validation_errors"].append(error_msg)
         
         # 根据结果返回不同状态
+        logger.info(f"表血缘关系JSON文件处理完成，创建: {result['lineages']['created']}，更新: {result['lineages']['updated']}，错误: {len(result['validation_errors'])}")
+        
         if result["validation_errors"]:
             # 统计错误数量
             error_count = len(result["validation_errors"])
@@ -746,10 +803,12 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
                 # 完全失败
                 status = "error"
                 message = f"表血缘关系导入失败，共{error_count}个错误"
+                logger.error(message)
             else:
                 # 部分成功
                 status = "partial_success"
                 message = f"表血缘关系导入完成，成功{success_count}个，失败{error_count}个"
+                logger.warning(message)
             
             return {
                 "status": status,
@@ -764,18 +823,24 @@ async def upload_table_lineage_json(file: UploadFile = File(...), db: Session = 
         else:
             # 完全成功
             success_count = result["lineages"]["created"] + result["lineages"]["updated"]
+            message = f"表血缘关系导入成功，共{success_count}个"
+            logger.info(message)
             return {
                 "status": "success",
-                "message": f"表血缘关系导入成功，共{success_count}个",
+                "message": message,
                 "result": {
                     "lineages": result["lineages"],
                     "success_count": success_count
                 }
             }
         
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
+        error_msg = f"JSON文件格式错误，无法解析: {str(e)}"
+        logger.error(error_msg)
         raise HTTPException(status_code=400, detail="JSON文件格式错误，无法解析")
     except Exception as e:
+        error_msg = f"处理表血缘关系JSON文件时出错: {str(e)}"
+        logger.error(error_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=f"处理表血缘关系JSON文件时出错: {str(e)}")
 
 @router.post("/column-lineage/excel", response_model=Dict[str, Any])

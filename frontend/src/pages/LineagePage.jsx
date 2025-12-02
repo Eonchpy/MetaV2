@@ -403,9 +403,13 @@ const LineagePage = () => {
           type: 'graph',
           layout: 'force',
           force: {
-            repulsion: 300,
-            gravity: 0.1,
-            edgeLength: [80, 150]
+            repulsion: 500,
+            gravity: 0.05,
+            edgeLength: [100, 200],
+            // 关闭力导向布局的持续动画，只在初始化时执行
+            initLayout: true,
+            // 关闭拖拽时的力导向布局更新
+            layoutAnimation: false
           },
           roam: true,
           label: {
@@ -455,6 +459,68 @@ const LineagePage = () => {
       console.log('设置ECharts配置项');
       currentChartInstance.current.setOption(option);
       console.log('图表配置项设置成功，图表渲染完成');
+      
+      // 添加拖拽事件处理，实现只有被拖拽的节点和连接它的边移动的效果
+      currentChartInstance.current.on('dragstart', function(params) {
+        if (params.dataType === 'node') {
+          // 拖拽开始时，暂停力导向布局，只保留拖拽效果
+          currentChartInstance.current.setOption({
+            series: [{
+              force: {
+                // 关闭力导向布局的持续更新
+                gravity: 0,
+                repulsion: 0,
+                edgeLength: 150,
+                // 暂停力导向布局
+                layoutAnimation: false
+              }
+            }]
+          });
+        }
+      });
+      
+      currentChartInstance.current.on('dragend', function(params) {
+        if (params.dataType === 'node') {
+          // 拖拽结束时，固定被拖拽节点的位置
+          const data = currentChartInstance.current.getOption().series[0].data;
+          const newData = data.map(node => {
+            if (node.id === params.data.id) {
+              // 固定被拖拽节点的位置，设置fixed属性为true
+              return {
+                ...node,
+                // 保存当前位置
+                x: params.data.x,
+                y: params.data.y,
+                // 固定节点位置
+                fixed: true
+              };
+            }
+            return node;
+          });
+          
+          // 更新图表数据，保持被拖拽节点的位置
+          currentChartInstance.current.setOption({
+            series: [{
+              data: newData,
+              force: {
+                // 恢复力导向布局参数
+                gravity: 0.05,
+                repulsion: 500,
+                edgeLength: [100, 200],
+                // 恢复力导向布局的持续更新
+                layoutAnimation: false
+              }
+            }]
+          });
+        }
+      });
+      
+      // 添加节点点击事件，取消其他节点的固定状态
+      currentChartInstance.current.on('click', function(params) {
+        if (params.dataType === 'node') {
+          // 可以在这里添加点击节点的处理逻辑
+        }
+      });
     } catch (error) {
       console.error('设置图表配置项失败:', error);
     }

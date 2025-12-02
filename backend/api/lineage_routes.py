@@ -356,7 +356,7 @@ async def delete_column_lineage(
 async def get_table_lineage_graph(
     table_id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
-    direction: str = Query("both", regex="^(up|down|both)$", description="血缘关系方向: up(上游), down(下游), both(双向)"),
+    direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -372,7 +372,7 @@ async def get_table_lineage_graph(
 async def get_table_lineage_graph_alternative(
     id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
-    direction: str = Query("both", regex="^(up|down|both)$", description="血缘关系方向: up(上游), down(下游), both(双向)"),
+    direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -390,7 +390,7 @@ async def get_table_lineage_graph_alternative(
 async def get_column_lineage_graph(
     column_id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
-    direction: str = Query("both", regex="^(up|down|both)$", description="血缘关系方向: up(上游), down(下游), both(双向)"),
+    direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
     db: Session = Depends(get_db)
 ):
     """
@@ -406,7 +406,7 @@ async def get_column_lineage_graph(
 async def get_column_lineage_graph_alternative(
     column_id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
-    direction: str = Query("both", regex="^(up|down|both)$", description="血缘关系方向: up(上游), down(下游), both(双向)"),
+    direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
     db: Session = Depends(get_db)
 ):
     """

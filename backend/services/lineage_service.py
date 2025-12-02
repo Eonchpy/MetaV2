@@ -393,7 +393,7 @@ class LineageService:
             db: 数据库会话
             table_id: 起始表ID
             depth: 获取的深度，默认为2
-            direction: 方向，可选值："upstream"（只获取上游）、"downstream"（只获取下游）、"both"（获取双向），默认为"both"
+            direction: 方向，可选值："up"/"upstream"（只获取上游）、"down"/"downstream"（只获取下游）、"both"（获取双向），默认为"both"
         
         Returns:
             包含nodes和edges的字典，nodes包含表节点信息，edges包含血缘关系边信息
@@ -401,6 +401,16 @@ class LineageService:
         # 确保输入参数正确
         if isinstance(table_id, str):
             table_id = int(table_id)
+        
+        # 统一方向参数格式，将"upstream"转换为"up"，"downstream"转换为"down"
+        direction_map = {
+            "upstream": "up",
+            "downstream": "down",
+            "up": "up",
+            "down": "down",
+            "both": "both"
+        }
+        direction = direction_map.get(direction.lower(), "both")
         
         # 获取起始表
         start_table = db.query(TableMetadata).filter(TableMetadata.id == table_id).first()
@@ -487,7 +497,7 @@ class LineageService:
             visited.add(current_id)
             
             # 获取上游节点（如果方向允许）
-            if direction in ["upstream", "both"] and current_id in target_to_sources:
+            if direction in ["up", "both"] and current_id in target_to_sources:
                 for source_id in target_to_sources[current_id]:
                     if source_id not in visited:
                         # 添加源表节点
@@ -523,7 +533,7 @@ class LineageService:
                         get_lineage(source_id, current_depth + 1, visited.copy())
             
             # 获取下游节点（如果方向允许）
-            if direction in ["downstream", "both"] and current_id in source_to_targets:
+            if direction in ["down", "both"] and current_id in source_to_targets:
                 for target_id in source_to_targets[current_id]:
                     if target_id not in visited:
                         # 添加目标表节点
@@ -571,13 +581,33 @@ class LineageService:
     
     @staticmethod
     def get_column_lineage_graph(db: Session, column_id: int, depth: int = 2, direction: str = "both") -> LineageGraphResponse:
-        """获取列的血缘关系图数据，包括上下游指定深度的列"""
+        """获取列的血缘关系图数据，包括上下游指定深度的列
+        
+        Args:
+            db: 数据库会话
+            column_id: 起始列ID
+            depth: 获取的深度，默认为2
+            direction: 方向，可选值："up"/"upstream"（只获取上游）、"down"/"downstream"（只获取下游）、"both"（获取双向），默认为"both"
+        
+        Returns:
+            包含nodes和edges的LineageGraphResponse对象
+        """
         # 创建图
         G = nx.DiGraph()
         column_nodes = set()
         table_nodes = set()
         column_edges = set()
         table_column_edges = set()  # 连接表和列的边
+        
+        # 统一方向参数格式，将"upstream"转换为"up"，"downstream"转换为"down"
+        direction_map = {
+            "upstream": "up",
+            "downstream": "down",
+            "up": "up",
+            "down": "down",
+            "both": "both"
+        }
+        direction = direction_map.get(direction.lower(), "both")
         
         # 递归获取上游列
         def get_upstream_columns(current_id: int, current_depth: int):
