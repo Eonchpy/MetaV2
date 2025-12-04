@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table, AutoComplete, Radio } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import * as echarts from 'echarts';
 import axios from 'axios';
 import { tableMetadataApi, lineageApi } from '../services/api';
+import LineageGraph from '../components/LineageGraph';
+import LineageToolbar from '../components/LineageToolbar';
+import LineageDrawer from '../components/LineageDrawer';
 
 const { TabPane } = Tabs;
 const { Option } = Select;
@@ -30,13 +32,16 @@ const LineagePage = () => {
   const [tableLineageList, setTableLineageList] = useState([]);
   const [columnLineageList, setColumnLineageList] = useState([]);
   const [form] = Form.useForm();
-  
+
+  // LineageGraph组件的ref，用于调用其导出和视图控制方法
+  const lineageGraphRef = useRef(null);
+
   // 血缘图深度和方向控制
   const [depth, setDepth] = useState(2); // 默认深度为2
   const [direction, setDirection] = useState("both"); // 默认方向为both
   const [columnDepth, setColumnDepth] = useState(2); // 列级血缘默认深度为2
   const [columnDirection, setColumnDirection] = useState("both"); // 列级血缘默认方向为both
-  
+
   // 搜索相关状态，每个标签页独立
   const [searchValues, setSearchValues] = useState({
     table: '',
@@ -48,18 +53,94 @@ const LineagePage = () => {
   });
   const [searchLoading, setSearchLoading] = useState(false);
   const searchTimeoutRef = useRef(null);
-  
+
+  // 添加标志位防止重复获取数据
+  const isFetchingRef = useRef({
+    table: false,
+    column: false
+  });
+
   // 获取当前标签页的状态
   const currentSearchValue = searchValues[activeTab] || '';
   const currentSearchResults = searchResults[activeTab] || [];
   const currentSelectedTable = selectedTables[activeTab] || null;
   const currentGraphData = graphData[activeTab] || null;
+
+  // Cytoscape相关状态
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [currentLineageLevel, setCurrentLineageLevel] = useState(activeTab);
+  const [upstreamList, setUpstreamList] = useState([]);
+  const [downstreamList, setDownstreamList] = useState([]);
+
+  // 当前节点ID（用于高亮显示）
+  const getCurrentNodeId = () => {
+    if (activeTab === 'table' && currentSelectedTable) {
+      return currentSelectedTable.id;
+    }
+    if (activeTab === 'column' && selectedColumn) {
+      return selectedColumn.id;
+    }
+    return undefined;
+  };
+
+  // Cytoscape操作函数 - 使用ref调用LineageGraph的方法
+  const handleZoomIn = () => {
+    lineageGraphRef.current?.zoomIn();
+  };
+
+  const handleZoomOut = () => {
+    lineageGraphRef.current?.zoomOut();
+  };
+
+  const handleFit = () => {
+    lineageGraphRef.current?.fit();
+  };
+
+  const handleReset = () => {
+    lineageGraphRef.current?.reset();
+  };
+
+  // 导出功能
+  const handleExportPNG = () => {
+    lineageGraphRef.current?.exportPNG();
+    message.success('PNG图片导出成功');
+  };
+
+  const handleExportJPG = () => {
+    lineageGraphRef.current?.exportJPG();
+    message.success('JPG图片导出成功');
+  };
+
+  const handleExportSVG = () => {
+    lineageGraphRef.current?.exportSVG();
+    message.success('SVG矢量图导出成功');
+  };
   
-  // 为表级和列级血缘分别创建独立的图表引用
-  const tableChartRef = useRef(null);
-  const columnChartRef = useRef(null);
-  const tableChartInstance = useRef(null);
-  const columnChartInstance = useRef(null);
+  // 节点点击事件处理
+  const handleNodeClick = (node) => {
+    setSelectedNode(node);
+    
+    // 计算上下游节点
+    if (currentGraphData) {
+      // 计算上游节点
+      const upstreamNodes = currentGraphData.edges
+        .filter(edge => edge.target === node.id)
+        .map(edge => edge.source);
+      
+      // 计算下游节点
+      const downstreamNodes = currentGraphData.edges
+        .filter(edge => edge.source === node.id)
+        .map(edge => edge.target);
+      
+      // 获取节点名称
+      const nodeMap = new Map(currentGraphData.nodes.map(n => [n.id, n.label]));
+      setUpstreamList(upstreamNodes.map(id => nodeMap.get(id) || id));
+      setDownstreamList(downstreamNodes.map(id => nodeMap.get(id) || id));
+    }
+    
+    setDrawerVisible(true);
+  };
   
   // 防抖搜索函数
   const debounceSearch = useCallback((keyword) => {
@@ -196,49 +277,65 @@ const LineagePage = () => {
 
   // 获取表级血缘关系图数据
   const fetchTableLineageGraph = async (tableId) => {
+    // 防止重复获取
+    if (isFetchingRef.current.table) {
+      console.log('表级血缘数据正在获取中，跳过重复请求');
+      return;
+    }
+
     console.log('===== fetchTableLineageGraph 开始 =====');
     console.log(`获取表ID: ${tableId} 的血缘关系图数据，深度: ${depth}，方向: ${direction}`);
-    
+
     try {
+      isFetchingRef.current.table = true;
       setLoading(true);
       console.log('调用lineageApi.getTableLineageGraph');
       const response = await lineageApi.getTableLineageGraph(tableId, { depth, direction });
-      
+
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
       const tableGraphData = response.data || response;
-      
+
       console.log('获取表级血缘数据成功，响应数据:', {
         nodesCount: tableGraphData?.nodes?.length || 0,
-        edgesCount: tableGraphData?.edges?.length || 0
+        edgesCount: tableGraphData?.edges?.length || 0,
+        rawData: tableGraphData
       });
-      
+
       console.log('设置graphData状态');
       setGraphData(prev => ({
         ...prev,
         table: tableGraphData
       }));
-      
+
       // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
       console.error('获取表级血缘关系失败:', error);
       console.error('错误详情:', error.response?.data || error.message);
       message.error('获取表级血缘关系失败');
     } finally {
-      console.log('设置loading为false');
+      console.log('设置loading为false，释放fetching flag');
       setLoading(false);
+      isFetchingRef.current.table = false;
     }
     console.log('===== fetchTableLineageGraph 结束 =====');
   };
 
   // 获取列级血缘关系图数据
   const fetchColumnLineageGraph = async (columnId) => {
+    // 防止重复获取
+    if (isFetchingRef.current.column) {
+      console.log('列级血缘数据正在获取中，跳过重复请求');
+      return;
+    }
+
     console.log('开始获取列级血缘关系图数据，columnId:', columnId, '深度:', columnDepth, '方向:', columnDirection);
     try {
+      isFetchingRef.current.column = true;
       setLoading(true);
       console.log('调用lineageApi.getColumnLineageGraph');
       // 使用封装的API调用，传递depth和direction参数
       const response = await lineageApi.getColumnLineageGraph(columnId, { depth: columnDepth, direction: columnDirection });
-      
+
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
       const columnGraphData = response.data || response;
       console.log('成功获取列级血缘关系图数据:', columnGraphData);
@@ -253,6 +350,7 @@ const LineagePage = () => {
       message.error('获取列级血缘关系失败');
     } finally {
       setLoading(false);
+      isFetchingRef.current.column = false;
     }
   };
 
@@ -283,249 +381,36 @@ const LineagePage = () => {
     }
   };
 
-  // 渲染血缘关系图
-  const renderGraph = (data) => {
-    console.log('===== renderGraph 开始 =====');
-    console.log('data参数存在性:', !!data);
-    console.log('当前activeTab:', activeTab);
-    
-    // 根据当前标签页选择对应的图表引用
-    const currentChartRef = activeTab === 'table' ? tableChartRef : columnChartRef;
-    const currentChartInstance = activeTab === 'table' ? tableChartInstance : columnChartInstance;
-    
-    console.log('当前图表ref存在性:', !!currentChartRef.current);
-    console.log('当前图表实例状态:', currentChartInstance.current ? '已初始化' : '未初始化');
-    
-    if (!data) {
-      console.warn('renderGraph: 数据为空，不执行渲染');
-      return;
-    }
-    
-    if (!currentChartRef.current) {
-      console.warn('renderGraph: 图表ref为空，不执行渲染');
-      return;
+  // 转换数据格式以适配Cytoscape
+  const transformGraphData = (data) => {
+    console.log('transformGraphData 被调用，输入数据:', data);
+
+    if (!data || !data.nodes || !data.edges) {
+      console.log('transformGraphData: 数据无效，返回空数据');
+      return { nodes: [], edges: [] };
     }
 
-    // 确保每次渲染前先清空并重新初始化图表
-    if (currentChartInstance.current) {
-      console.log('销毁现有ECharts实例');
-      currentChartInstance.current.dispose();
-      currentChartInstance.current = null;
-    }
-    
-    console.log('创建新的ECharts实例');
-    try {
-      currentChartInstance.current = echarts.init(currentChartRef.current);
-      console.log('ECharts实例创建成功');
-    } catch (error) {
-      console.error('创建ECharts实例失败:', error);
-      return;
-    }
-    
-    // 监听窗口大小变化，调整图表大小
-    console.log('添加窗口大小变化监听器');
-    window.addEventListener('resize', () => {
-      if (currentChartInstance.current) {
-        console.log('执行图表大小调整');
-        currentChartInstance.current.resize();
-      }
-    });
+    // 转换节点数据
+    const nodes = data.nodes.map(node => ({
+      id: node.id,
+      label: node.name || node.label,
+      type: node.type === 'table' ? 'table' : 'column',
+      ...node
+    }));
 
-    // 转换数据为ECharts格式
-    console.log('开始转换数据为ECharts格式');
-    console.log('原始数据nodes数量:', data.nodes?.length || 0);
-    console.log('原始数据edges数量:', data.edges?.length || 0);
-    
-    const nodes = data.nodes?.map(node => ({
-      id: `${node.type}_${node.id}`,  // 添加类型前缀，确保节点id唯一
-      name: node.name,
-      category: node.type === 'table' ? 0 : 1,
-      symbolSize: node.type === 'table' ? 40 : 30,
-      itemStyle: {
-        color: node.type === 'table' ? '#1890ff' : '#52c41a'
-      },
-      label: {
-        show: true,
-        formatter: '{b}',
-        position: 'top'
-      }
-    })) || [];
+    // 转换边数据
+    const edges = data.edges.map(edge => ({
+      source: edge.source,
+      target: edge.target,
+      relation: edge.relation_type || edge.relation || 'direct',
+      ...edge
+    }));
 
-    const links = data.edges?.map(link => {
-      // 根据边的类型确定source和target的节点类型
-      let sourceId, targetId;
-      if (link.type === 'table_column_relation') {
-        // 表和列的连接边：source是表节点，target是列节点
-        sourceId = `table_${link.source}`;
-        targetId = `column_${link.target}`;
-      } else if (link.type === 'column_lineage') {
-        // 列级血缘关系边：source和target都是列节点
-        sourceId = `column_${link.source}`;
-        targetId = `column_${link.target}`;
-      } else {
-        // 其他类型的边：默认都是表节点
-        sourceId = `table_${link.source}`;
-        targetId = `table_${link.target}`;
-      }
-      
-      return {
-        source: sourceId,
-        target: targetId,
-        value: link.relation_type,
-        label: {
-          show: true,
-          formatter: link.relation_type,
-          position: 'middle'
-        }
-      };
-    }) || [];
-    
-    console.log('转换完成，nodes数量:', nodes.length, 'links数量:', links.length);
-
-    const categories = [
-      { name: '表' },
-      { name: '列' }
-    ];
-
-    const option = {
-      tooltip: {
-        trigger: 'item'
-      },
-      legend: [
-        {
-          data: categories.map(c => c.name)
-        }
-      ],
-      animationDurationUpdate: 1500,
-      animationEasingUpdate: 'quinticInOut',
-      series: [
-        {
-          type: 'graph',
-          layout: 'force',
-          force: {
-            repulsion: 500,
-            gravity: 0.05,
-            edgeLength: [100, 200],
-            // 关闭力导向布局的持续动画，只在初始化时执行
-            initLayout: true,
-            // 关闭拖拽时的力导向布局更新
-            layoutAnimation: false
-          },
-          roam: true,
-          label: {
-            show: true,
-            formatter: '{b}'
-          },
-          edgeLabel: {
-            show: true,
-            fontSize: 12
-          },
-          edgeSymbol: ['none', 'arrow'],
-          edgeSymbolSize: 10,
-          data: nodes,
-          links: links,
-          categories: categories,
-          emphasis: {
-            focus: 'self',
-            itemStyle: {
-              opacity: 1
-            },
-            lineStyle: {
-              width: 4
-            }
-          },
-          blur: {
-            itemStyle: {
-              opacity: 0.3
-            },
-            lineStyle: {
-              opacity: 0.3
-            }
-          },
-          lineStyle: {
-            opacity: 1,
-            width: 1.5,
-            curveness: 0.3,
-            color: '#333'
-          },
-          itemStyle: {
-            borderWidth: 2
-          }
-        }
-      ]
-    };
-
-    try {
-      console.log('设置ECharts配置项');
-      currentChartInstance.current.setOption(option);
-      console.log('图表配置项设置成功，图表渲染完成');
-      
-      // 添加拖拽事件处理，实现只有被拖拽的节点和连接它的边移动的效果
-      currentChartInstance.current.on('dragstart', function(params) {
-        if (params.dataType === 'node') {
-          // 拖拽开始时，暂停力导向布局，只保留拖拽效果
-          currentChartInstance.current.setOption({
-            series: [{
-              force: {
-                // 关闭力导向布局的持续更新
-                gravity: 0,
-                repulsion: 0,
-                edgeLength: 150,
-                // 暂停力导向布局
-                layoutAnimation: false
-              }
-            }]
-          });
-        }
-      });
-      
-      currentChartInstance.current.on('dragend', function(params) {
-        if (params.dataType === 'node') {
-          // 拖拽结束时，固定被拖拽节点的位置
-          const data = currentChartInstance.current.getOption().series[0].data;
-          const newData = data.map(node => {
-            if (node.id === params.data.id) {
-              // 固定被拖拽节点的位置，设置fixed属性为true
-              return {
-                ...node,
-                // 保存当前位置
-                x: params.data.x,
-                y: params.data.y,
-                // 固定节点位置
-                fixed: true
-              };
-            }
-            return node;
-          });
-          
-          // 更新图表数据，保持被拖拽节点的位置
-          currentChartInstance.current.setOption({
-            series: [{
-              data: newData,
-              force: {
-                // 恢复力导向布局参数
-                gravity: 0.05,
-                repulsion: 500,
-                edgeLength: [100, 200],
-                // 恢复力导向布局的持续更新
-                layoutAnimation: false
-              }
-            }]
-          });
-        }
-      });
-      
-      // 添加节点点击事件，取消其他节点的固定状态
-      currentChartInstance.current.on('click', function(params) {
-        if (params.dataType === 'node') {
-          // 可以在这里添加点击节点的处理逻辑
-        }
-      });
-    } catch (error) {
-      console.error('设置图表配置项失败:', error);
-    }
-    console.log('===== renderGraph 结束 =====');
+    console.log('transformGraphData: 转换后的数据', { nodeCount: nodes.length, edgeCount: edges.length, nodes, edges });
+    return { nodes, edges };
   };
+  const tableGraphData = graphData.table ? transformGraphData(graphData.table) : null;
+  const columnGraphData = graphData.column ? transformGraphData(graphData.column) : null;
 
   // 处理表选择变化（兼容旧的Select组件，用于列级视图的表选择）
   const handleTableChange = (tableId) => {
@@ -585,31 +470,21 @@ const LineagePage = () => {
       fetchTableLineageList();
       
       // 不需要重新获取数据，直接使用已保存的graphData
-      if (graphData.table) {
-        console.log('使用已保存的表级血缘数据，调用renderGraph渲染图表');
-        renderGraph(graphData.table);
-      } else if (selectedTables.table) {
+      if (selectedTables.table && !graphData.table) {
         console.log(`已选中表: ${selectedTables.table.id} - ${selectedTables.table.name}，但没有保存的graphData，调用fetchTableLineageGraph获取数据`);
         fetchTableLineageGraph(selectedTables.table.id);
-      } else {
-        console.log('未选中表，等待用户选择');
       }
     } else if (tab === 'column') {
       console.log('切换到列级血缘视图');
       fetchColumnLineageList();
       
       // 不需要重新获取数据，直接使用已保存的graphData
-      if (graphData.column) {
-        console.log('使用已保存的列级血缘数据，调用renderGraph渲染图表');
-        renderGraph(graphData.column);
-      } else if (selectedTables.column && selectedColumn) {
+      if (selectedTables.column && selectedColumn && !graphData.column) {
         console.log(`已选中表和列，但没有保存的graphData，调用fetchColumnLineageGraph获取数据`);
         fetchColumnLineageGraph(selectedColumn.id);
       } else if (selectedTables.column) {
         console.log(`已选中表: ${selectedTables.column.id} - ${selectedTables.column.name}，调用fetchTableColumns获取列信息`);
         fetchTableColumns(selectedTables.column.id);
-      } else {
-        console.log('未选中表，等待用户选择');
       }
     } else if (tab === 'list') {
       console.log('切换到血缘关系列表视图');
@@ -641,45 +516,16 @@ const LineagePage = () => {
     
     return () => {
       console.log('===== 组件清理开始 =====');
-      // 清理ECharts实例
-      if (tableChartInstance.current) {
-        console.log('清理表级ECharts实例');
-        tableChartInstance.current.dispose();
-        tableChartInstance.current = null;
-      }
-      if (columnChartInstance.current) {
-        console.log('清理列级ECharts实例');
-        columnChartInstance.current.dispose();
-        columnChartInstance.current = null;
-      }
+      // 清理Cytoscape相关状态
+      setSelectedNode(null);
+      setDrawerVisible(false);
       console.log('===== 组件清理结束 =====');
     };
   }, []);
-  
-  // 监听graphData变化，确保图表正确渲染
-  useEffect(() => {
-    console.log('===== graphData变化监听 =====');
-    console.log('graphData状态变化:', graphData);
-    
-    // 有数据就重新渲染图表
-    if (currentGraphData) {
-      console.log('当前标签页的graphData已更新，重新渲染图表');
-      renderGraph(currentGraphData);
-    }
-  }, [graphData, activeTab]);
-  
-  // 监听activeTab变化，确保在切换标签页后重新渲染正确的图表
-  useEffect(() => {
-    console.log('标签页切换，准备重新渲染对应图表');
-    // 延迟一小段时间，确保DOM元素已经渲染
-    const timer = setTimeout(() => {
-      if (currentGraphData) {
-        renderGraph(currentGraphData);
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [activeTab]);
-  
+
+  // 移除了重复的监听血缘层级变化的useEffect，避免重复渲染
+  // 数据获取逻辑已由handleTabChange和depth/direction的useEffect处理
+
   // 监听activeTab变化，确保搜索结果与当前搜索值匹配
   useEffect(() => {
     // 如果当前标签页的搜索值不为空，但搜索结果为空，自动触发搜索
@@ -697,14 +543,16 @@ const LineagePage = () => {
   
   // 监听depth和direction变化，重新获取血缘图数据
   useEffect(() => {
-    if (selectedTables.table) {
+    // 只在表级血缘tab且已选表时才获取
+    if (activeTab === 'table' && selectedTables.table) {
       fetchTableLineageGraph(selectedTables.table.id);
     }
   }, [depth, direction]);
-  
+
   // 监听columnDepth和columnDirection变化，重新获取列级血缘数据
   useEffect(() => {
-    if (selectedColumn) {
+    // 只在列级血缘tab且已选列时才获取
+    if (activeTab === 'column' && selectedColumn) {
       fetchColumnLineageGraph(selectedColumn.id);
     }
   }, [columnDepth, columnDirection]);
@@ -865,11 +713,38 @@ const LineagePage = () => {
             </Radio.Group>
           </div>
           
+          {/* Cytoscape组件 */}
+          {tableGraphData?.nodes?.length ? (
+            <LineageToolbar
+              lineageLevel={currentLineageLevel}
+              onLevelChange={setCurrentLineageLevel}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
+              onReset={handleReset}
+              onExportPNG={handleExportPNG}
+              onExportJPG={handleExportJPG}
+              onExportSVG={handleExportSVG}
+              disabled={loading}
+            />
+          ) : null}
+
           <div className="lineage-chart-container">
             {loading ? (
               <Spin tip="加载中..." style={{ marginTop: '100px' }} />
-            ) : graphData.table ? (
-              <div ref={tableChartRef} style={{ width: '100%', height: '600px' }} />
+            ) : tableGraphData ? (
+              tableGraphData.nodes?.length ? (
+                <LineageGraph
+                  ref={lineageGraphRef}
+                  data={tableGraphData}
+                  onNodeClick={handleNodeClick}
+                  currentNodeId={getCurrentNodeId()}
+                  height="700px"
+                  showNavigator={true}
+                />
+              ) : (
+                <div className="empty-state">当前表暂无血缘关系数据</div>
+              )
             ) : (
               <div className="empty-state">请选择一个表查看血缘关系</div>
             )}
@@ -944,11 +819,38 @@ const LineagePage = () => {
             </Radio.Group>
           </div>
           
+          {/* Cytoscape组件 */}
+          {columnGraphData?.nodes?.length ? (
+            <LineageToolbar
+              lineageLevel={currentLineageLevel}
+              onLevelChange={setCurrentLineageLevel}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onFit={handleFit}
+              onReset={handleReset}
+              onExportPNG={handleExportPNG}
+              onExportJPG={handleExportJPG}
+              onExportSVG={handleExportSVG}
+              disabled={loading}
+            />
+          ) : null}
+
           <div className="lineage-chart-container">
             {loading ? (
               <Spin tip="加载中..." style={{ marginTop: '100px' }} />
-            ) : graphData.column ? (
-              <div ref={columnChartRef} style={{ width: '100%', height: '600px' }} />
+            ) : columnGraphData ? (
+              columnGraphData.nodes?.length ? (
+                <LineageGraph
+                  ref={lineageGraphRef}
+                  data={columnGraphData}
+                  onNodeClick={handleNodeClick}
+                  currentNodeId={getCurrentNodeId()}
+                  height="700px"
+                  showNavigator={true}
+                />
+              ) : (
+                <div className="empty-state">当前列暂无血缘关系数据</div>
+              )
             ) : (
               <div className="empty-state">请选择表和列查看血缘关系</div>
             )}
@@ -999,6 +901,20 @@ const LineagePage = () => {
           </Form.Item>
         </Form>
       </Modal>
+      
+      {/* Cytoscape节点详情抽屉 */}
+      <LineageDrawer
+        visible={drawerVisible}
+        node={selectedNode}
+        upstreamList={upstreamList}
+        downstreamList={downstreamList}
+        onClose={() => setDrawerVisible(false)}
+        onDeleteLineage={(nodeId) => {
+          // 后续版本实现删除血缘关系功能
+          message.info(`删除血缘关系功能待实现：${nodeId}`);
+          setDrawerVisible(false);
+        }}
+      />
     </Card>
   );
 };
