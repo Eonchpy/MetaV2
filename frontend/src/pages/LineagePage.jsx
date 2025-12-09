@@ -42,6 +42,12 @@ const LineagePage = () => {
   const [columnDepth, setColumnDepth] = useState(2); // 列级血缘默认深度为2
   const [columnDirection, setColumnDirection] = useState("both"); // 列级血缘默认方向为both
 
+  // 上游表其他下游依赖显示控制
+  const [showUpstreamDependencies, setShowUpstreamDependencies] = useState(false);
+
+  // 列级血缘中显示表节点的控制
+  const [showTableNodes, setShowTableNodes] = useState(true); // 默认显示表节点
+
   // 搜索相关状态，每个标签页独立
   const [searchValues, setSearchValues] = useState({
     table: '',
@@ -275,33 +281,42 @@ const LineagePage = () => {
     }
   };
 
+  // 处理上游依赖显示选项变化
+  const handleUpstreamDependenciesChange = (value) => {
+    setShowUpstreamDependencies(value);
+    // 如果当前已选择表，重新获取血缘数据
+    if (selectedTables.table) {
+      fetchTableLineageGraph(selectedTables.table.id);
+    }
+  };
+
+  // 处理列级血缘中表节点显示选项变化
+  const handleShowTableNodesChange = (value) => {
+    setShowTableNodes(value);
+    // 如果当前已选择列，重新获取列级血缘数据
+    if (selectedColumn) {
+      fetchColumnLineageGraph(selectedColumn.id);
+    }
+  };
+
   // 获取表级血缘关系图数据
   const fetchTableLineageGraph = async (tableId) => {
-    // 防止重复获取
-    if (isFetchingRef.current.table) {
-      console.log('表级血缘数据正在获取中，跳过重复请求');
-      return;
-    }
-
-    console.log('===== fetchTableLineageGraph 开始 =====');
-    console.log(`获取表ID: ${tableId} 的血缘关系图数据，深度: ${depth}，方向: ${direction}`);
-
     try {
       isFetchingRef.current.table = true;
       setLoading(true);
-      console.log('调用lineageApi.getTableLineageGraph');
-      const response = await lineageApi.getTableLineageGraph(tableId, { depth, direction });
+
+      // 构建请求参数，包含上游依赖选项
+      const params = {
+        depth,
+        direction,
+        include_upstream_dependencies: showUpstreamDependencies  // 明确传递布尔值
+      };
+
+      const response = await lineageApi.getTableLineageGraph(tableId, params);
 
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
       const tableGraphData = response.data || response;
 
-      console.log('获取表级血缘数据成功，响应数据:', {
-        nodesCount: tableGraphData?.nodes?.length || 0,
-        edgesCount: tableGraphData?.edges?.length || 0,
-        rawData: tableGraphData
-      });
-
-      console.log('设置graphData状态');
       setGraphData(prev => ({
         ...prev,
         table: tableGraphData
@@ -309,44 +324,34 @@ const LineagePage = () => {
 
       // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
-      console.error('获取表级血缘关系失败:', error);
-      console.error('错误详情:', error.response?.data || error.message);
+      console.error('❌ [ERROR] 获取表级血缘关系失败:', error);
       message.error('获取表级血缘关系失败');
     } finally {
-      console.log('设置loading为false，释放fetching flag');
       setLoading(false);
       isFetchingRef.current.table = false;
     }
-    console.log('===== fetchTableLineageGraph 结束 =====');
   };
 
   // 获取列级血缘关系图数据
   const fetchColumnLineageGraph = async (columnId) => {
-    // 防止重复获取
-    if (isFetchingRef.current.column) {
-      console.log('列级血缘数据正在获取中，跳过重复请求');
-      return;
-    }
-
-    console.log('开始获取列级血缘关系图数据，columnId:', columnId, '深度:', columnDepth, '方向:', columnDirection);
     try {
       isFetchingRef.current.column = true;
       setLoading(true);
-      console.log('调用lineageApi.getColumnLineageGraph');
-      // 使用封装的API调用，传递depth和direction参数
-      const response = await lineageApi.getColumnLineageGraph(columnId, { depth: columnDepth, direction: columnDirection });
+
+      // 使用封装的API调用，传递depth、direction和showTableNodes参数
+      const response = await lineageApi.getColumnLineageGraph(columnId, {
+        depth: columnDepth,
+        direction: columnDirection,
+        show_table_nodes: showTableNodes  // 添加显示表节点参数
+      });
 
       // 处理API响应，支持两种格式：直接返回图数据或包含data字段的对象
       const columnGraphData = response.data || response;
-      console.log('成功获取列级血缘关系图数据:', columnGraphData);
       setGraphData(prev => ({
         ...prev,
         column: columnGraphData
       }));
-      // 不再直接调用renderGraph，由监听graphData的useEffect统一处理
     } catch (error) {
-      console.error('获取列级血缘关系错误:', error);
-      console.error('错误详情:', error.response?.data || error.message);
       message.error('获取列级血缘关系失败');
     } finally {
       setLoading(false);
@@ -547,15 +552,15 @@ const LineagePage = () => {
     if (activeTab === 'table' && selectedTables.table) {
       fetchTableLineageGraph(selectedTables.table.id);
     }
-  }, [depth, direction]);
+  }, [depth, direction, showUpstreamDependencies]);
 
-  // 监听columnDepth和columnDirection变化，重新获取列级血缘数据
+  // 监听columnDepth、columnDirection和showTableNodes变化，重新获取列级血缘数据
   useEffect(() => {
     // 只在列级血缘tab且已选列时才获取
     if (activeTab === 'column' && selectedColumn) {
       fetchColumnLineageGraph(selectedColumn.id);
     }
-  }, [columnDepth, columnDirection]);
+  }, [columnDepth, columnDirection, showTableNodes]);
   
   // 监听selectedTables变化
   useEffect(() => {
@@ -726,6 +731,9 @@ const LineagePage = () => {
               onExportJPG={handleExportJPG}
               onExportSVG={handleExportSVG}
               disabled={loading}
+              showLevelSwitch={false} // 表级血缘页面不显示层级切换按钮
+              showUpstreamDependencies={showUpstreamDependencies}
+              onUpstreamDependenciesChange={handleUpstreamDependenciesChange}
             />
           ) : null}
 
@@ -832,6 +840,11 @@ const LineagePage = () => {
               onExportJPG={handleExportJPG}
               onExportSVG={handleExportSVG}
               disabled={loading}
+              showLevelSwitch={false} // 列级血缘页面不显示层级切换按钮
+              showUpstreamDependencies={false} // 列级血缘页面不显示上游依赖选项
+              onUpstreamDependenciesChange={null}
+              showTableNodes={showTableNodes} // 传递显示表节点状态
+              onShowTableNodesChange={handleShowTableNodesChange} // 传递处理函数
             />
           ) : null}
 

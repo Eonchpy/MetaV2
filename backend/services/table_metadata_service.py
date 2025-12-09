@@ -1,5 +1,7 @@
 from typing import List, Optional
+import re
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import and_, or_
 from models import TableMetadata
 from models.schemas import TableMetadataCreate, TableMetadataUpdate
 
@@ -74,11 +76,19 @@ class TableMetadataService:
         
         # 添加搜索条件
         if keyword:
-            # 在表名和描述中搜索关键词
-            query = query.filter(
-                (TableMetadata.name.ilike(f'%{keyword}%')) |
-                (TableMetadata.description.ilike(f'%{keyword}%') if TableMetadata.description else False)
-            )
+            keyword = keyword.strip()
+            tokens = [t for t in re.split(r'[\\s\\-_]+', keyword) if t]
+            if tokens:
+                token_filters = []
+                for token in tokens:
+                    pattern = f"%{token}%"
+                    token_filters.append(
+                        or_(
+                            TableMetadata.name.ilike(pattern),
+                            TableMetadata.description.ilike(pattern)
+                        )
+                    )
+                query = query.filter(and_(*token_filters))
         
         # 添加排序
         if sort_field and hasattr(TableMetadata, sort_field):

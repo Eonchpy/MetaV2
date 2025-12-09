@@ -2,12 +2,12 @@ from models import Base, init_db
 import os
 
 # 数据库URL - 使用配置中指定的metadata.db
-DATABASE_URL = "sqlite:///D:/working/PersonalSys/MetaV2/metadata.db"
+DATABASE_URL = "sqlite:///../metadata.db"
 
 print("开始重置数据库...")
 
 # 删除旧的数据库文件
-METADATA_DB_PATH = "D:/working/PersonalSys/MetaV2/metadata.db"
+METADATA_DB_PATH = "../metadata.db"
 if os.path.exists(METADATA_DB_PATH):
     print("删除旧的metadata.db文件...")
     os.remove(METADATA_DB_PATH)

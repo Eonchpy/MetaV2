@@ -21,7 +21,12 @@ const LineageToolbar = ({
   onExportPNG,
   onExportJPG,
   onExportSVG,
-  disabled = false
+  disabled = false,
+  showLevelSwitch = true, // 控制是否显示层级切换按钮
+  showUpstreamDependencies = false,
+  onUpstreamDependenciesChange = null,
+  showTableNodes = true, // 是否显示表节点
+  onShowTableNodesChange = null
 }) => {
   // 导出菜单项
   const exportMenuItems = [
@@ -56,29 +61,74 @@ const LineageToolbar = ({
         marginBottom: '16px',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px'
       }}
     >
-      <Space size="middle">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>血缘层级：</span>
-          <Radio.Group
-            value={lineageLevel}
-            onChange={(e) => onLevelChange(e.target.value)}
-            buttonStyle="solid"
-            disabled={disabled}
-          >
-            <Radio.Button value="table">
-              <TableOutlined style={{ marginRight: '4px' }} />
-              表级
-            </Radio.Button>
-            <Radio.Button value="column">
-              <DatabaseOutlined style={{ marginRight: '4px' }} />
-              字段级
-            </Radio.Button>
-          </Radio.Group>
-        </div>
-      </Space>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        {/* 血缘层级切换 - 仅在showLevelSwitch为true时显示 */}
+        {showLevelSwitch && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>血缘层级：</span>
+            <Radio.Group
+              value={lineageLevel}
+              onChange={(e) => onLevelChange(e.target.value)}
+              buttonStyle="solid"
+              disabled={disabled}
+            >
+              <Radio.Button value="table">
+                <TableOutlined style={{ marginRight: '4px' }} />
+                表级
+              </Radio.Button>
+              <Radio.Button value="column">
+                <DatabaseOutlined style={{ marginRight: '4px' }} />
+                字段级
+              </Radio.Button>
+            </Radio.Group>
+          </div>
+        )}
+
+        {/* 上游表其他下游依赖选项 - 仅在表级血缘且有对应回调时显示 */}
+        {showUpstreamDependencies !== null && onUpstreamDependenciesChange && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>扩展显示：</span>
+            <Radio.Group
+              value={showUpstreamDependencies}
+              onChange={(e) => onUpstreamDependenciesChange(e.target.value)}
+              buttonStyle="solid"
+              disabled={disabled}
+            >
+              <Radio.Button value={false}>
+                直接血缘
+              </Radio.Button>
+              <Radio.Button value={true}>
+                显示上游其他依赖
+              </Radio.Button>
+            </Radio.Group>
+          </div>
+        )}
+
+        {/* 显示表节点选项 - 仅在列级血缘且有对应回调时显示 */}
+        {onShowTableNodesChange && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#333' }}>节点显示：</span>
+            <Radio.Group
+              value={showTableNodes}
+              onChange={(e) => onShowTableNodesChange(e.target.value)}
+              buttonStyle="solid"
+              disabled={disabled}
+            >
+              <Radio.Button value={true}>
+                显示表节点
+              </Radio.Button>
+              <Radio.Button value={false}>
+                仅列节点
+              </Radio.Button>
+            </Radio.Group>
+          </div>
+        )}
+      </div>
 
       <Space size="middle">
         <Tooltip title="放大">

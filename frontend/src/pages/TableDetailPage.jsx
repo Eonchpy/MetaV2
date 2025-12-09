@@ -1,11 +1,29 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Table, Spin, Tag, Space, Button, Tooltip, Badge, Tabs, Empty } from 'antd';
-import { DatabaseOutlined, CloudServerOutlined, ArrowLeftOutlined, DownloadOutlined, ReloadOutlined, LinkOutlined, CodeOutlined, InfoCircleOutlined, CalendarOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Table, Spin, Tag, Space, Tooltip, Badge, Empty } from 'antd';
+import {
+  ArrowLeftIcon,
+  ArrowDownTrayIcon,
+  ArrowPathIcon,
+  LinkIcon,
+  CodeBracketIcon,
+  InformationCircleIcon,
+  CalendarIcon,
+  ClockIcon,
+  ServerIcon,
+  CloudIcon,
+  TableCellsIcon,
+  KeyIcon,
+  ShieldCheckIcon,
+  ExclamationTriangleIcon,
+  ChartBarIcon,
+} from '@heroicons/react/24/outline';
 import { tableMetadataApi, columnMetadataApi, lineageApi } from '../services/api';
-import './TablePages.css';
-
-const { TabPane } = Tabs;
+import PageCard from '../components/layout/PageCard';
+import Button from '../components/ui/Button';
+import Tabs from '../components/ui/Tabs';
+import { typography } from '../theme/theme';
+import './TableDetailPage.css';
 
 const TableDetailPage = () => {
   const { id } = useParams();
@@ -26,36 +44,72 @@ const TableDetailPage = () => {
   // 获取数据库类型对应的图标和颜色
   const getDatabaseInfo = (dbType) => {
     const typeMap = {
-      oracle: { icon: <DatabaseOutlined />, color: 'orange', text: 'Oracle' },
-      mysql: { icon: <DatabaseOutlined />, color: 'blue', text: 'MySQL' },
-      postgresql: { icon: <DatabaseOutlined />, color: 'green', text: 'PostgreSQL' },
-      es: { icon: <CloudServerOutlined />, color: 'purple', text: 'Elasticsearch' },
-      mongo: { icon: <CloudServerOutlined />, color: 'red', text: 'MongoDB' }
+      oracle: { icon: <ServerIcon className="w-5 h-5" />, color: '#F59E0B', text: 'Oracle' },
+      mysql: { icon: <ServerIcon className="w-5 h-5" />, color: '#2563EB', text: 'MySQL' },
+      postgresql: { icon: <ServerIcon className="w-5 h-5" />, color: '#10B981', text: 'PostgreSQL' },
+      es: { icon: <CloudIcon className="w-5 h-5" />, color: '#7C3AED', text: 'Elasticsearch' },
+      mongo: { icon: <CloudIcon className="w-5 h-5" />, color: '#EF4444', text: 'MongoDB' }
     };
     // 添加空值检查，防止dbType为undefined时调用toLowerCase()报错
     const dbTypeStr = dbType && typeof dbType === 'string' ? dbType.toLowerCase() : '';
-    return typeMap[dbTypeStr] || { icon: <DatabaseOutlined />, color: 'default', text: dbType || '未知数据库' };
+    return typeMap[dbTypeStr] || { icon: <ServerIcon className="w-5 h-5" />, color: '#6B7280', text: dbType || '未知数据库' };
   };
 
   // 获取字段约束类型对应的标签
   const getConstraintTag = (constraints) => {
     if (!constraints) return null;
-    
+
     const constraintTags = [];
     if (constraints.primaryKey) {
-      constraintTags.push(<Tag color="red" key="pk">PK</Tag>);
+      constraintTags.push(
+        <div
+          key="pk"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-red-100 text-red-700 border border-red-200"
+        >
+          <KeyIcon className="w-3 h-3" />
+          PK
+        </div>
+      );
     }
     if (constraints.foreignKey) {
-      constraintTags.push(<Tag color="blue" key="fk">FK</Tag>);
+      constraintTags.push(
+        <div
+          key="fk"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200"
+        >
+          <LinkIcon className="w-3 h-3" />
+          FK
+        </div>
+      );
     }
     if (constraints.notNull) {
-      constraintTags.push(<Tag color="orange" key="nn">NOT NULL</Tag>);
+      constraintTags.push(
+        <div
+          key="nn"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200"
+        >
+          <ShieldCheckIcon className="w-3 h-3" />
+          NOT NULL
+        </div>
+      );
     }
     if (constraints.unique) {
-      constraintTags.push(<Tag color="green" key="uq">UNIQUE</Tag>);
+      constraintTags.push(
+        <div
+          key="uq"
+          className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-700 border border-green-200"
+        >
+          <ExclamationTriangleIcon className="w-3 h-3" />
+          UNIQUE
+        </div>
+      );
     }
-    
-    return constraintTags.length > 0 ? constraintTags : null;
+
+    return constraintTags.length > 0 ? (
+      <div className="flex items-center gap-1 flex-wrap">
+        {constraintTags}
+      </div>
+    ) : null;
   };
 
   // 加载表信息
@@ -472,7 +526,7 @@ const TableDetailPage = () => {
 
   if (loading.table) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+      <div className="flex items-center justify-center min-h-96">
         <Spin size="large" tip="加载表信息中..." />
       </div>
     );
@@ -480,9 +534,15 @@ const TableDetailPage = () => {
 
   if (!tableInfo) {
     return (
-      <div style={{ padding: '40px', textAlign: 'center' }}>
-        <Empty description="表不存在或已被删除" />
-        <Button type="primary" icon={<ArrowLeftOutlined />} onClick={handleBack} style={{ marginTop: '20px' }}>
+      <div className="text-center py-16">
+        <InformationCircleIcon className="w-16 h-16 text-muted mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-secondary mb-2">表不存在或已被删除</h3>
+        <p className="text-muted mb-6">该表可能已被删除或ID无效</p>
+        <Button
+          variant="primary"
+          icon={<ArrowLeftIcon className="w-4 h-4" />}
+          onClick={handleBack}
+        >
           返回列表
         </Button>
       </div>
@@ -491,159 +551,250 @@ const TableDetailPage = () => {
 
   const { icon: dbIcon, color: dbColor, text: dbText } = getDatabaseInfo(tableInfo.database_type);
   const dbType = (tableInfo.database_type || '').toLowerCase();
-  
+
+  const tabItems = [
+    { key: 'overview', label: '概览' },
+    { key: 'structure', label: '表结构' },
+    { key: 'lineage', label: '血缘关系' }
+  ];
+
   return (
-    <div className="table-detail-container">
-      {loading.table && (
-        <div className="loading-container">
-          <Spin size="large" tip="加载表信息中..." />
+    <div className="table-detail-page" style={{ padding: 0 }}>
+      {/* Page Header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button
+            variant="ghost"
+            icon={<ArrowLeftIcon className="w-4 h-4" />}
+            onClick={handleBack}
+          >
+            返回
+          </Button>
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div
+                className="p-2 rounded-lg"
+                style={{ backgroundColor: `${dbColor}15`, color: dbColor }}
+              >
+                {dbIcon}
+              </div>
+              <h1 style={typography.pageTitle} className="mb-0">
+                {tableInfo.name || tableInfo.table_name}
+              </h1>
+              <div
+                className="px-2 py-1 rounded-md text-sm font-medium"
+                style={{
+                  backgroundColor: `${dbColor}15`,
+                  color: dbColor,
+                  border: `1px solid ${dbColor}30`
+                }}
+              >
+                {dbText}
+              </div>
+            </div>
+            <p className="text-muted text-sm">
+              {tableInfo.description || '暂无描述'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Button
+            variant="secondary"
+            icon={<ArrowPathIcon className="w-4 h-4" />}
+            onClick={handleRefresh}
+            loading={loading.table || loading.columns || loading.lineage}
+          >
+            刷新
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<ArrowDownTrayIcon className="w-4 h-4" />}
+            onClick={handleExport}
+            disabled={columns.length === 0}
+          >
+            导出结构
+          </Button>
+        </div>
+      </div>
+
+      {/* Table Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <PageCard>
+          <div className="flex items-center gap-3">
+            <ServerIcon className="w-5 h-5 text-muted" />
+            <div>
+              <div className="text-sm text-muted mb-1">数据库</div>
+              <div className="font-medium">{tableInfo.database_name || '-'}</div>
+            </div>
+          </div>
+        </PageCard>
+
+        <PageCard>
+          <div className="flex items-center gap-3">
+            <TableCellsIcon className="w-5 h-5 text-muted" />
+            <div>
+              <div className="text-sm text-muted mb-1">模式</div>
+              <div className="font-medium">{tableInfo.schema_name || 'default'}</div>
+            </div>
+          </div>
+        </PageCard>
+
+        <PageCard>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-5 h-5 rounded flex items-center justify-center text-white text-xs font-bold"
+              style={{ backgroundColor: dbColor }}
+            >
+              {columns.length}
+            </div>
+            <div>
+              <div className="text-sm text-muted mb-1">字段数量</div>
+              <div className="font-medium">{columns.length} 个字段</div>
+            </div>
+          </div>
+        </PageCard>
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        items={tabItems}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        className="mb-6"
+      />
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 table-detail-table-wrapper">
+          <PageCard title="基本信息">
+            <div className="space-y-4">
+              <div className="flex justify-between py-2 border-b border-subtle">
+                <span className="text-muted">表名</span>
+                <span className="font-medium">{tableInfo.name || tableInfo.table_name || '-'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-subtle">
+                <span className="text-muted">数据库类型</span>
+                <div
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium"
+                  style={{
+                    backgroundColor: `${dbColor}15`,
+                    color: dbColor,
+                    border: `1px solid ${dbColor}30`
+                  }}
+                >
+                  {dbIcon}
+                  <span>{dbText}</span>
+                </div>
+              </div>
+              <div className="flex justify-between py-2 border-b border-subtle">
+                <span className="text-muted">数据库</span>
+                <span className="font-medium">{tableInfo.database_name || '-'}</span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-subtle">
+                <span className="text-muted">模式</span>
+                <span className="font-medium">{tableInfo.schema_name || 'default'}</span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-muted">数据源</span>
+                <span className="font-medium">{tableInfo.data_source?.name || '未知'}</span>
+              </div>
+            </div>
+          </PageCard>
+
+          <PageCard title="时间信息">
+            <div className="space-y-4">
+              <div className="flex justify-between py-2 border-b border-subtle">
+                <div className="flex items-center gap-2 text-muted">
+                  <CalendarIcon className="w-4 h-4" />
+                  创建时间
+                </div>
+                <span className="font-medium">
+                  {tableInfo.created_at ? new Date(tableInfo.created_at).toLocaleString() : '未知'}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <div className="flex items-center gap-2 text-muted">
+                  <ClockIcon className="w-4 h-4" />
+                  更新时间
+                </div>
+                <span className="font-medium">
+                  {tableInfo.updated_at ? new Date(tableInfo.updated_at).toLocaleString() : '未知'}
+                </span>
+              </div>
+            </div>
+          </PageCard>
         </div>
       )}
-      
-      {!loading.table && tableInfo && (
-        <>
-          <div className="table-header">
-            <div className="button-group">
-              <Space size="middle">
-                <Button icon={<ArrowLeftOutlined />} onClick={handleBack}>返回列表</Button>
-                <Button type="primary" icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading.table || loading.columns || loading.lineage}>
-                  刷新数据
-                </Button>
-                <Button icon={<DownloadOutlined />} onClick={handleExport} disabled={columns.length === 0}>
-                  导出表结构
-                </Button>
-              </Space>
+
+      {activeTab === 'structure' && (
+        <PageCard title="表结构">
+          <Spin spinning={loading.columns}>
+            <div className="table-detail-table-wrapper">
+              <Table
+                className="modern-table"
+                columns={structureColumns}
+                dataSource={columns}
+                rowKey="id"
+                pagination={{
+                  pageSize: 50,
+                  total: columns.length,
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100', '200'],
+                  showTotal: (total) => `共 ${total} 个字段`
+                }}
+                scroll={{ x: '100%' }}
+                tableLayout="fixed"
+                size="middle"
+                locale={{
+                  emptyText: (
+                    <div className="text-center py-12">
+                      <CodeBracketIcon className="w-16 h-16 text-muted mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-secondary mb-2">暂无字段信息</h3>
+                      <p className="text-muted">该表还没有字段定义</p>
+                    </div>
+                  )
+                }}
+                rowClassName={(record, index) =>
+                  index % 2 === 0 ? 'modern-table-row-even' : 'modern-table-row-odd'
+                }
+              />
             </div>
-            
-            <Card className="info-card" ref={cardRef}>
-              <div className="table-title-section">
-                <Space align="center">
-                  {dbIcon}
-                  <h1 className="table-name">{tableInfo.name}</h1>
-                  <Badge color={dbColor} text={dbText} />
-                </Space>
-              </div>
-              
-              <div className="table-meta-info">
-                <div className="meta-item">
-                  <InfoCircleOutlined style={{ fontSize: '14px' }} />
-                  <span className="meta-label">描述：</span>
-                  <span>{tableInfo.description || '无描述'}</span>
-                </div>
-                
-                {dbType === 'oracle' ? (
-                  <div className="meta-item">
-                    <DatabaseOutlined style={{ fontSize: '14px' }} />
-                    <span className="meta-label">所属库：</span>
-                    <span>{tableInfo.data_source?.name || '未知'}</span>
-                  </div>
-                ) : (
-                  <div className="meta-item">
-                    <CloudServerOutlined style={{ fontSize: '14px' }} />
-                    <span className="meta-label">所属服务器：</span>
-                    <span>{tableInfo.data_source?.name || '未知'}</span>
-                  </div>
-                )}
-                
-                <div className="meta-item">
-                  <CalendarOutlined style={{ fontSize: '14px' }} />
-                  <span className="meta-label">创建时间：</span>
-                  <span>{tableInfo.created_at ? new Date(tableInfo.created_at).toLocaleString() : '未知'}</span>
-                </div>
-                
-                <div className="meta-item">
-                  <ClockCircleOutlined style={{ fontSize: '14px' }} />
-                  <span className="meta-label">更新时间：</span>
-                  <span>{tableInfo.updated_at ? new Date(tableInfo.updated_at).toLocaleString() : '未知'}</span>
-                </div>
-              </div>
-            </Card>
-          </div>
-          
-          <Tabs activeKey={activeTab} onChange={setActiveTab} className="table-tabs">
-            {/* 表结构标签页 */}
-            <TabPane tab={<span><CodeOutlined /> 表结构</span>} key="structure">
-              <Card className="content-card">
-                <div className="info-card-header">
-                  <h2 className="info-card-title">表结构</h2>
-                </div>
-                <div className="info-card-content">
-                  <Spin spinning={loading.columns}>
-                    <Table
-                      className="structure-table"
-                      columns={structureColumns}
-                      dataSource={columns}
-                      rowKey="id"
-                      pagination={{
-                        pageSize: 50,
-                        total: columns.length,
-                        showSizeChanger: true,
-                        pageSizeOptions: ['10', '20', '50', '100', '200']
-                      }}
-                      scroll={{ x: 'max-content' }}
-                      size="middle"
-                      locale={{
-                        emptyText: (
-                          <div className="empty-state">
-                            <InfoCircleOutlined className="empty-state-icon" />
-                            <p>暂无字段信息</p>
-                          </div>
-                        )
-                      }}
-                      rowClassName="table-row-hover"
-                    />
-                  </Spin>
-                </div>
-              </Card>
-            </TabPane>
-
-            {/* 血缘关系标签页 */}
-            <TabPane tab={<span><LinkOutlined /> 血缘关系</span>} key="lineage">
-              <Card className="content-card">
-                <div className="info-card-header">
-                  <h2 className="info-card-title">血缘关系</h2>
-                </div>
-                <div className="info-card-content">
-                  <Spin spinning={loading.lineage}>
-                    {/* 上游依赖 */}
-                    <div className="lineage-section">
-                      <div 
-                        className="lineage-header" 
-                        onClick={() => toggleLineageExpansion('upstream')}
-                      >
-                        <Badge color="blue" text="上游依赖表" style={{ flex: 1 }} />
-                        <ArrowLeftOutlined rotate={expandedLineage.upstream ? 0 : -90} />
-                      </div>
-                      {expandedLineage.upstream && renderLineageTable(lineageData.upstream, '上游')}
-                    </div>
-
-                    {/* 下游引用 */}
-                    <div className="lineage-section">
-                      <div 
-                        className="lineage-header" 
-                        onClick={() => toggleLineageExpansion('downstream')}
-                      >
-                        <Badge color="green" text="下游引用表" style={{ flex: 1 }} />
-                        <ArrowLeftOutlined rotate={expandedLineage.downstream ? 180 : -90} />
-                      </div>
-                      {expandedLineage.downstream && renderLineageTable(lineageData.downstream, '下游')}
-                    </div>
-                  </Spin>
-                </div>
-              </Card>
-            </TabPane>
-          </Tabs>
-        </>
+          </Spin>
+        </PageCard>
       )}
-      
-      {!loading.table && !tableInfo && (
-        <div className="empty-state">
-          <InfoCircleOutlined className="empty-state-icon" />
-          <p>未找到表信息</p>
-          <p>表ID可能无效或已被删除</p>
-          <Button type="primary" icon={<ArrowLeftOutlined />} onClick={handleBack} style={{ marginTop: '16px' }}>
-            返回列表
-          </Button>
+
+      {activeTab === 'lineage' && (
+        <div className="space-y-6 table-detail-table-wrapper">
+          {/* 上游依赖 */}
+          <PageCard
+            title={
+              <div className="flex items-center gap-2">
+                <ChartBarIcon className="w-5 h-5 text-blue-500" />
+                上游依赖表
+                <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-700 rounded-md text-sm">
+                  {lineageData.upstream.length}
+                </span>
+              </div>
+            }
+          >
+            {renderLineageTable(lineageData.upstream, '上游')}
+          </PageCard>
+
+          {/* 下游引用 */}
+          <PageCard
+            title={
+              <div className="flex items-center gap-2">
+                <LinkIcon className="w-5 h-5 text-green-500" />
+                下游引用表
+                <span className="ml-2 px-2 py-1 bg-green-100 text-green-700 rounded-md text-sm">
+                  {lineageData.downstream.length}
+                </span>
+              </div>
+            }
+          >
+            {renderLineageTable(lineageData.downstream, '下游')}
+          </PageCard>
         </div>
       )}
     </div>

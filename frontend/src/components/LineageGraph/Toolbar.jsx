@@ -28,7 +28,10 @@ const LineageToolbar = ({
   onZoomOut,
   onFit,
   onReset,
-  disabled = false
+  disabled = false,
+  showLevelSwitch = true, // 控制是否显示层级切换按钮
+  showUpstreamDependencies = false,
+  onUpstreamDependenciesChange = null
 }) => {
   return (
     <div 
@@ -45,51 +48,99 @@ const LineageToolbar = ({
         gap: '8px'
       }}
     >
-      {/* 血缘层级切换 */}
-      <Space size="middle">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>血缘层级：</span>
-          <Radio.Group
-            value={lineageLevel}
-            onChange={(e) => onLevelChange(e.target.value)}
-            buttonStyle="solid"
-            disabled={disabled}
-            style={{
-              borderRadius: '6px',
-              overflow: 'hidden'
-            }}
-          >
-            <Radio.Button 
-              value="table" 
+      {/* 血缘层级切换 - 仅在showLevelSwitch为true时显示 */}
+      {showLevelSwitch && (
+        <Space size="middle">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>血缘层级：</span>
+            <Radio.Group
+              value={lineageLevel}
+              onChange={(e) => onLevelChange(e.target.value)}
+              buttonStyle="solid"
+              disabled={disabled}
               style={{
-                borderRadius: '4px 0 0 4px',
-                border: `1px solid #E5E7EB`,
-                '&:hover': {
-                  borderColor: '#3B82F6',
-                  color: '#3B82F6'
-                }
+                borderRadius: '6px',
+                overflow: 'hidden'
               }}
             >
-              <TableOutlined style={{ marginRight: '4px' }} />
-              表级
-            </Radio.Button>
-            <Radio.Button 
-              value="column" 
+              <Radio.Button
+                value="table"
+                style={{
+                  borderRadius: '4px 0 0 4px',
+                  border: `1px solid #E5E7EB`,
+                  '&:hover': {
+                    borderColor: '#3B82F6',
+                    color: '#3B82F6'
+                  }
+                }}
+              >
+                <TableOutlined style={{ marginRight: '4px' }} />
+                表级
+              </Radio.Button>
+              <Radio.Button
+                value="column"
+                style={{
+                  borderRadius: '0 4px 4px 0',
+                  border: `1px solid #E5E7EB`,
+                  '&:hover': {
+                    borderColor: '#3B82F6',
+                    color: '#3B82F6'
+                  }
+                }}
+              >
+                <DatabaseOutlined style={{ marginRight: '4px' }} />
+                字段级
+              </Radio.Button>
+            </Radio.Group>
+          </div>
+        </Space>
+      )}
+
+      {/* 上游表其他下游依赖选项 - 仅在表级血缘且有对应回调时显示 */}
+      {showUpstreamDependencies && onUpstreamDependenciesChange && (
+        <Space size="middle">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>扩展显示：</span>
+            <Radio.Group
+              value={showUpstreamDependencies}
+              onChange={(e) => onUpstreamDependenciesChange(e.target.value)}
+              buttonStyle="solid"
+              disabled={disabled}
               style={{
-                borderRadius: '0 4px 4px 0',
-                border: `1px solid #E5E7EB`,
-                '&:hover': {
-                  borderColor: '#3B82F6',
-                  color: '#3B82F6'
-                }
+                borderRadius: '6px',
+                overflow: 'hidden'
               }}
             >
-              <DatabaseOutlined style={{ marginRight: '4px' }} />
-              字段级
-            </Radio.Button>
-          </Radio.Group>
-        </div>
-      </Space>
+              <Radio.Button
+                value={false}
+                style={{
+                  borderRadius: '4px 0 0 4px',
+                  border: `1px solid #E5E7EB`,
+                  '&:hover': {
+                    borderColor: '#3B82F6',
+                    color: '#3B82F6'
+                  }
+                }}
+              >
+                直接血缘
+              </Radio.Button>
+              <Radio.Button
+                value={true}
+                style={{
+                  borderRadius: '0 4px 4px 0',
+                  border: `1px solid #E5E7EB`,
+                  '&:hover': {
+                    borderColor: '#3B82F6',
+                    color: '#3B82F6'
+                  }
+                }}
+              >
+                显示上游其他依赖
+              </Radio.Button>
+            </Radio.Group>
+          </div>
+        </Space>
+      )}
 
       {/* 操作按钮 */}
       <Space size="middle" style={{ display: 'flex', gap: '8px' }}>

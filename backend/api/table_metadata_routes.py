@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Response
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, and_, or_
+import re
 import json
 
 from models.schemas import (
     TableMetadataBase, TableMetadataCreate, TableMetadataUpdate, TableMetadataResponse
 )
 from services.table_metadata_service import TableMetadataService
-from models import get_db, TableMetadata
+from models import get_db, TableMetadata, DataSource
 
 router = APIRouter(prefix="/tables", tags=["table-metadata"])
 
@@ -42,41 +43,71 @@ async def get_tables(
     """
     获取表元数据列表，支持分页、按数据源筛选、搜索和排序
     """
-    # 构建查询
-    query = db.query(TableMetadata)
-    
+    # 基础查询（用于总数统计，避免 join 影响 count）
+    base_query = db.query(TableMetadata)
+
     # 添加搜索条件
     if keyword:
-        query = query.filter(
-            (TableMetadata.name.ilike(f'%{keyword}%')) |
-            (TableMetadata.description.ilike(f'%{keyword}%') if TableMetadata.description else False)
-        )
-    
+        keyword = keyword.strip()
+        tokens = [t for t in re.split(r'[\\s\\-_]+', keyword) if t]
+        if tokens:
+            token_filters = []
+            for token in tokens:
+                pattern = f"%{token}%"
+                token_filters.append(
+                    or_(
+                        TableMetadata.name.ilike(pattern),
+                        TableMetadata.description.ilike(pattern)
+                    )
+                )
+            base_query = base_query.filter(and_(*token_filters))
+
     # 添加数据源筛选
     if data_source_id:
-        query = query.filter(TableMetadata.data_source_id == data_source_id)
-    
+        base_query = base_query.filter(TableMetadata.data_source_id == data_source_id)
+
     # 获取总记录数
-    total = query.count()
-    
+    total = base_query.count()
+
+    # 数据查询（关联数据源，便于前端展示）
+    data_query = db.query(TableMetadata, DataSource).outerjoin(DataSource, TableMetadata.data_source_id == DataSource.id)
+
+    # 复用过滤条件
+    if keyword:
+        keyword = keyword.strip()
+        tokens = [t for t in re.split(r'[\\s\\-_]+', keyword) if t]
+        if tokens:
+            token_filters = []
+            for token in tokens:
+                pattern = f"%{token}%"
+                token_filters.append(
+                    or_(
+                        TableMetadata.name.ilike(pattern),
+                        TableMetadata.description.ilike(pattern)
+                    )
+                )
+            data_query = data_query.filter(and_(*token_filters))
+
+    if data_source_id:
+        data_query = data_query.filter(TableMetadata.data_source_id == data_source_id)
+
     # 添加排序
     if sort_field and hasattr(TableMetadata, sort_field):
         sort_column = getattr(TableMetadata, sort_field)
         if sort_order.lower() == 'desc':
-            query = query.order_by(sort_column.desc())
+            data_query = data_query.order_by(sort_column.desc())
         else:
-            query = query.order_by(sort_column.asc())
+            data_query = data_query.order_by(sort_column.asc())
     else:
         # 默认按ID排序
-        query = query.order_by(TableMetadata.id)
-    
+        data_query = data_query.order_by(TableMetadata.id)
+
     # 添加分页
-    tables = query.offset(skip).limit(limit).all()
-    
+    rows = data_query.offset(skip).limit(limit).all()
+
     # 将SQLAlchemy模型转换为字典列表
     tables_dict = []
-    for table in tables:
-        # 转换为字典，排除不需要的字段
+    for table, ds in rows:
         table_dict = {
             "id": table.id,
             "name": table.name,
@@ -84,10 +115,19 @@ async def get_tables(
             "data_source_id": table.data_source_id,
             "description": table.description,
             "created_at": table.created_at,
-            "updated_at": table.updated_at
+            "updated_at": table.updated_at,
+            # 额外返回数据源信息，便于前端展示
+            "database_name": ds.name if ds else None,
+            "db_type": ds.type.value if ds and hasattr(ds.type, "value") else (ds.type if ds else None),
+            "data_source": {
+                "id": ds.id,
+                "name": ds.name,
+                "type": ds.type.value if ds and hasattr(ds.type, "value") else (ds.type if ds else None),
+                "description": getattr(ds, "description", None),
+            } if ds else None,
         }
         tables_dict.append(table_dict)
-    
+
     return {
         "total": total,
         "data": tables_dict

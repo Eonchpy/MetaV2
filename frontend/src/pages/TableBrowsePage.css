@@ -1,0 +1,141 @@
+/* Modern Table Styles */
+/* Modern Clean Design System */
+
+.modern-table-container {
+  overflow: hidden;
+}
+
+.modern-table .ant-table {
+  font-size: 14px;
+}
+
+.modern-table .ant-table-thead > tr > th {
+  background: var(--color-gray-50, #F9FAFB);
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  padding: 12px 16px;
+}
+
+.modern-table .ant-table-tbody > tr {
+  transition: background-color 0.2s ease;
+}
+
+.modern-table .ant-table-tbody > tr:hover {
+  background-color: var(--color-gray-50, #F9FAFB);
+}
+
+.modern-table-row-even {
+  background-color: var(--color-bg-card);
+}
+
+.modern-table-row-odd {
+  background-color: var(--color-gray-25, #FCFCFD);
+}
+
+.modern-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 12px 16px;
+  transition: background-color 0.2s ease;
+}
+
+.modern-table .ant-table-tbody > tr:last-child > td {
+  border-bottom: none;
+}
+
+.modern-table .ant-table-selection-column {
+  padding: 12px 8px !important;
+}
+
+.modern-table .ant-table-selection-column .ant-checkbox-wrapper {
+  margin-right: 0;
+}
+
+.modern-table .ant-pagination {
+  margin: 16px 0 0 0;
+  text-align: right;
+}
+
+.modern-table .ant-pagination .ant-pagination-item {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.modern-table .ant-pagination .ant-pagination-item:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.modern-table .ant-pagination .ant-pagination-item-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.modern-table .ant-pagination .ant-pagination-item-active a {
+  color: white;
+}
+
+.modern-table .ant-pagination .ant-pagination-prev,
+.modern-table .ant-pagination .ant-pagination-next {
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.modern-table .ant-pagination .ant-pagination-prev:hover,
+.modern-table .ant-pagination .ant-pagination-next:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+/* Empty state styles */
+.modern-table .ant-empty {
+  margin: 40px 0;
+}
+
+/* Row selection styles */
+.modern-table .ant-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modern-table .ant-checkbox {
+  top: 0;
+}
+
+.modern-table .ant-checkbox-inner {
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border-strong);
+  transition: all 0.2s ease;
+}
+
+.modern-table .ant-checkbox-checked .ant-checkbox-inner {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.modern-table .ant-checkbox:hover .ant-checkbox-inner {
+  border-color: var(--color-primary);
+}
+
+/* Loading state */
+.modern-table .ant-spin-container {
+  position: relative;
+}
+
+.modern-table .ant-spin-blur {
+  opacity: 0.5;
+  user-select: none;
+}
+
+/* Action buttons in table rows */
+.modern-table-row button {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.modern-table-row:hover button {
+  opacity: 1;
+}

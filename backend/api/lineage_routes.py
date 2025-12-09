@@ -352,27 +352,29 @@ async def delete_column_lineage(
     return {"message": "列级血缘关系删除成功"}
 
 # 血缘关系图可视化接口
-@router.get("/graph/table/{table_id}", response_model=Dict[str, Any])
+@router.get("/table/graph/{table_id}", response_model=Dict[str, Any])
 async def get_table_lineage_graph(
     table_id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
     direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
+    include_upstream_dependencies: bool = Query(False, description="是否包含上游表的其他下游依赖关系"),
     db: Session = Depends(get_db)
 ):
     """
     获取表级血缘关系图数据
     """
     try:
-        graph_data = lineage_service.get_table_lineage_graph(db, table_id, depth, direction)
+        graph_data = lineage_service.get_table_lineage_graph(db, table_id, depth, direction, include_upstream_dependencies)
         return graph_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/table/graph/{id}", response_model=LineageGraphResponse)
+@router.get("/table/graph/{id}", response_model=Dict[str, Any])
 async def get_table_lineage_graph_alternative(
     id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
     direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
+    include_upstream_dependencies: bool = Query(False, description="是否包含上游表的其他下游依赖关系"),
     db: Session = Depends(get_db)
 ):
     """
@@ -380,8 +382,7 @@ async def get_table_lineage_graph_alternative(
     注意：此端点是为了兼容/table/graph/{id}的请求路径
     """
     try:
-        graph_data = lineage_service.get_table_lineage_graph(db, id, depth, direction)
-        # 直接返回对象，让FastAPI自动处理序列化
+        graph_data = lineage_service.get_table_lineage_graph(db, id, depth, direction, include_upstream_dependencies)
         return graph_data
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -407,6 +408,7 @@ async def get_column_lineage_graph_alternative(
     column_id: int,
     depth: int = Query(3, ge=1, le=10, description="血缘关系深度"),
     direction: str = Query("both", regex="^(up|down|upstream|downstream|both)$", description="血缘关系方向: up/upstream(上游), down/downstream(下游), both(双向)"),
+    show_table_nodes: bool = Query(True, description="是否显示表节点"),
     db: Session = Depends(get_db)
 ):
     """
@@ -414,7 +416,7 @@ async def get_column_lineage_graph_alternative(
     注意：此端点是为了兼容/lineages/column/graph/{column_id}的请求路径（结合路由器前缀）
     """
     try:
-        graph_data = lineage_service.get_column_lineage_graph(db, column_id, depth, direction)
+        graph_data = lineage_service.get_column_lineage_graph(db, column_id, depth, direction, show_table_nodes)
         # 确保返回的是字典格式
         if hasattr(graph_data, 'model_dump'):
             return graph_data.model_dump()
