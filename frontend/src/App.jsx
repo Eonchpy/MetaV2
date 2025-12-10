@@ -9,6 +9,7 @@ import AppLayout from './components/layout/AppLayout';
 
 import DataSourcePage from './pages/DataSourcePage';
 import LineagePage from './pages/LineagePage';
+import LineageManagement from './pages/LineageManagement';
 import SettingsPage from './pages/SettingsPage';
 import ImportPage from './pages/ImportPage';
 import TableBrowsePage from './pages/TableBrowsePage';
@@ -30,6 +31,7 @@ function App() {
           <Route path="/data-sources" element={<DataSourcePage />} />
           <Route path="/import" element={<ImportPage />} />
           <Route path="/lineage" element={<LineagePage />} />
+          <Route path="/lineage-management" element={<LineageManagement />} />
           <Route path="/analytics" element={<LineagePage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>

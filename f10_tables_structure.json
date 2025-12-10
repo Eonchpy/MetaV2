@@ -1,0 +1,29 @@
+{
+  "data_sources": [
+    {
+      "name": "F10数据库",
+      "type": "oracle",
+      "description": "F10股票基本面数据库，存储股票的基础信息、财务数据、公司治理等信息",
+      "connection_config": {
+        "host": "oracle_host",
+        "port": 1521,
+        "service_name": "f10_service",
+        "username": "f10_user",
+        "password": "f10_password"
+      }
+    }
+  ],
+  "tables": [
+    {
+      "data_source_name": "F10数据库",
+      "name": "T_F10_BASIC",
+      "schema_name": "f10",
+      "description": "F10基础信息表，存储股票全部基础信息",
+      "properties": {
+        "table_type": "DIMENSION",
+        "update_frequency": "DAILY",
+        "business_domain": "股票基本面"
+      }
+    }
+  ]
+}

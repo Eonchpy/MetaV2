@@ -1,0 +1,628 @@
+{
+  "lineages": [
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "SECUMAIN",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "证券主表提供股票基础信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1,P2,DAF,EMP_BENEFIT,EXEC,DEV",
+        "key_fields": "SECUCODE,SECUMARKET,INNERCODE,COMPANYCODE,LISTEDSECTOR",
+        "usage": "股票标识和基础属性"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_SECUMAIN",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板证券主表提供新三板股票基础信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1,P2,DAF,EMP_BENEFIT,EXEC,DEV",
+        "key_fields": "SECUCODE,SECUMARKET,INNERCODE,COMPANYCODE,LISTEDSECTOR,LISTEDDATE",
+        "usage": "新三板股票标识和基础属性"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STOCKARCHIVES",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "股票档案表提供公司档案信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1,P2",
+        "key_fields": "CHINAME,OFFICEADDR,CONTACTTEL,WEBSITE,OFFICEZIPCODE,SECRETARYBD,BRIEFINTROTEXT",
+        "usage": "公司基本信息和联系方式"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_AreaCode",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "地区代码表提供省份地区信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "AREACHINAME,AreaInnerCode",
+        "usage": "公司所在地区信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBSTOCKARCHIVES",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板股票档案表提供科创板公司档案信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1,P2",
+        "key_fields": "CHINAME,OFFICEADDR,CONTACTTEL,WEBSITE,SECRETARYBD,BRIEFINTROTEXT",
+        "usage": "科创板公司档案信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_COMARCHIVES",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板公司档案表提供新三板公司档案信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "CHINAME,OFFICEADDR,CONTACTTEL,WEBSITE,STATE,SECRETARYBD,BRIEFINTROTEXT",
+        "usage": "新三板公司档案信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_SystemConst",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板系统常量表提供地区映射信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "MS,DM,LB",
+        "usage": "地区代码映射"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_BUSINESS",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "业务信息表提供公司主营业务信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "MAINBUSINESS,MAINNAME,BUSINESSMAJOR",
+        "usage": "公司主营业务描述"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBBUSINESS",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板业务信息表提供科创板公司主营业务信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "MAINBUSINESS,MAINNAME,BUSINESSMAJOR",
+        "usage": "科创板公司主营业务"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_EXGINDUSTRY",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "交易所行业分类表提供行业分类信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "FIRSTINDUSTRYNAME,SECONDINDUSTRYNAME,THIRDINDUSTRYNAME,STANDARD",
+        "usage": "公司行业分类"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBEXGINDUSTRY",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板行业分类表提供科创板公司行业分类信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "FIRSTINDUSTRYNAME,SECONDINDUSTRYNAME,THIRDINDUSTRYNAME,STANDARD",
+        "usage": "科创板公司行业分类"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_EXGINDUSTRY",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板行业分类表提供新三板公司行业分类信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "FirstIndustryNM,SeconIndustryNM,ThirdIndustryNM,IndustryStd",
+        "usage": "新三板公司行业分类"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_COCONCEPT",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "股票概念关联表提供股票概念标签信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "INNERCODE,CONCEPTCODE,INDISTATE",
+        "usage": "股票概念标签"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_CONCEPTLIST",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "概念列表表提供概念详细信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "CONCEPTCODE,CONCEPTNAME,CONCEPTSTATE",
+        "usage": "概念名称和状态"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_SECUCHANGE",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "证券变更表提供股票更名历史信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "INNERCODE,CHANGEDATE,SecurityAbbr",
+        "usage": "股票曾用名历史"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBSECUCHANGE",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板证券变更表提供科创板股票更名历史信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "key_fields": "INNERCODE,CHANGEDATE,SECUABBR",
+        "usage": "科创板股票曾用名"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_NEWESTSHARESTRU",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "最新股本结构表提供总股本信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "TOTALSHARES,ENDDATE",
+        "usage": "总股本数据"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBSHARESTRU",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板股本结构表提供科创板总股本信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "TOTALSHARES,ENDDATE",
+        "usage": "科创板总股本"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_SHARESTRU",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板股本结构表提供新三板总股本信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "TOTALSHARES,ENDDATE",
+        "usage": "新三板总股本"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_MSHAREHOLDER",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "主要股东表提供股东信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2",
+        "key_fields": "MSHNAME,MSHPERCENTAGE,MSHNUMBER,IFEXISTED",
+        "usage": "主要股东持股信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBMAINSHLIST",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板主要股东表提供科创板股东信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2",
+        "key_fields": "SHNAME,PCTOFAFLOATSHARES,SHSN",
+        "usage": "科创板主要股东"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STAFF",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "员工信息表提供员工数量和教育背景信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EMP_BENEFIT",
+        "key_fields": "EMPLOYEESUM,ENDDATE,CLASSFIEDMETHOD,TYPECODE,MergeMark",
+        "usage": "员工总数、学历分布"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBSTAFF",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板员工信息表提供科创板员工信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EMP_BENEFIT",
+        "key_fields": "EMPLOYEESUM,ENDDATE,Classification,ProjectCode,IfMerged",
+        "usage": "科创板员工信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_BALANCESHEETPSCN",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "资产负债表项目表提供薪酬信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EMP_BENEFIT",
+        "key_fields": "CURRENTINCREASE,ENDDATE,ITEMCODE,ITEMCATEGORY",
+        "usage": "应付职工薪酬"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBBALANCESHEETPS",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板资产负债表项目表提供科创板薪酬信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EMP_BENEFIT",
+        "key_fields": "CURRENTINCREASE,ENDDATE,ItemType,ITEMCATEGORY",
+        "usage": "科创板应付职工薪酬"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_EXECUTIVESHOLDINGS",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "高管持股表提供高管薪酬和持股信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "LEADERNAME,SHAREAMOUNT,INDIRECTSHARES,ANNUALREWARD,ENDATE",
+        "usage": "高管薪酬持股"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBEXEHOLDREWARD",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板高管持股表提供科创板高管薪酬和持股信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "LEADERNAME,SHAREAMOUNT,INDIRECTSHARES,TotalYearPay,ENDATE",
+        "usage": "科创板高管薪酬持股"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_LEADERPOSITION",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "高管职位表提供高管职位信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "LEADERNAME,POSITION,POSITIONCODE,POSITIONTYPE,ifposition",
+        "usage": "董事长、董秘等职位"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBLEADERPOSITION",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板高管职位表提供科创板高管职位信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "POSTNAME,POSTCODE,positionType,Incumbent",
+        "usage": "科创板高管职位"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBLeaderIntroduce",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板高管介绍表提供科创板高管信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,EXEC",
+        "key_fields": "ID,COMPANYCODE,LEADERNAME,SECRETARYBD",
+        "usage": "科创板高管基本信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_MAINOPERINCOME",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "主营收入表提供主营构成信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2",
+        "key_fields": "ENDDATE,CLASSIFICATION,PROJECT,MAINOPERINCOME,REGIONANDBUSINESS",
+        "usage": "主营收入构成"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBMAINOPERINCOME",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "科创板主营收入表提供科创板主营构成信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2",
+        "key_fields": "ENDDATE,CLASSIFICATION,PROJECT,MAINOPERINCOME",
+        "usage": "科创板主营收入构成"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_MAINOPERINC",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板主营收入表提供新三板主营构成信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2",
+        "key_fields": "ENDDATE,CLASSIFICATION,PROJECT,OPERINCOME,REGANDBUSINESS",
+        "usage": "新三板主营收入构成"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_DIVIDEND",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "分红表提供分红信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "TOTALCASHDIVICOMRMB,TOACCOUNTDATE,INNERCODE",
+        "usage": "现金分红记录"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBDIVIDEND",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "科创板分红表提供科创板分红信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "TotalCashDivi,TOACCOUNTDATE,INNERCODE",
+        "usage": "科创板分红记录"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_DIVIDEND",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "新三板分红表提供新三板分红信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "TotalCashDivi,TOACCOUNTDATE,INNERCODE",
+        "usage": "新三板分红记录"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_ASHAREIPO",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "A股IPO表提供IPO融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF,DEV",
+        "key_fields": "IPOProceeds,DATETOACCOUNT,LISTDATE,ISSUEPRICE,TOTALISSUEMV",
+        "usage": "A股IPO募资信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBIPOIssue",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "科创板IPO表提供科创板IPO融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF,DEV",
+        "key_fields": "IPOProceeds,DATETOACCOUNT,ListedDate,ISSUEPRICE,TOTALISSUEMV",
+        "usage": "科创板IPO募资"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_SharesIssue",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "新三板发行表提供新三板IPO信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF,DEV",
+        "key_fields": "IPONETPROCEEDS,LISTEDDATE,ISSUEPRICE",
+        "usage": "新三板IPO募资"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_AShareSEASONEDNEWISSUE",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "增发表提供增发融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "SNIPROCEEDS,LISTANNOUNCEDATE,COMPANYCODE",
+        "usage": "增发募集资金"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBNewIssue",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "科创板增发表提供科创板增发融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "SNIPROCEEDS,LISTANNOUNCEDATE,COMPANYCODE",
+        "usage": "科创板增发募资"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_ASharePLACEMENT",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "配股表提供配股融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "PlaProceeds,PLAPROSPECTUSPUBLDATE,COMPANYCODE",
+        "usage": "配股净募资"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBSHAREPLACEMENT",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "科创板配股表提供科创板配股融资信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P2,DAF",
+        "key_fields": "PlaProceeds,PLAPROSPECTUSPUBLDATE,COMPANYCODE",
+        "usage": "科创板配股募资"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_INCOMESTATEMENTALL",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EMP_BENEFIT",
+      "relation_type": "ETL",
+      "description": "利润表提供归母净利润信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EMP_BENEFIT",
+        "key_fields": "NPPARENTCOMPANYOWNERS,ENDDATE,IfMerged,IfAdjusted",
+        "usage": "归母净利润用于计算人均创利"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBINCOMESTATE",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EMP_BENEFIT",
+      "relation_type": "ETL",
+      "description": "科创板利润表提供科创板归母净利润信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EMP_BENEFIT",
+        "key_fields": "NPPARENTCOMPANYOWNERS,ENDDATE,IfMerged,IfAdjusted",
+        "usage": "科创板归母净利润"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_INCSTATEMENT",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EMP_BENEFIT",
+      "relation_type": "ETL",
+      "description": "新三板利润表提供新三板归母净利润信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EMP_BENEFIT",
+        "key_fields": "NPParComOwners,ENDDATE,IfMerged,IfAdjusted,AccountStandard",
+        "usage": "新三板归母净利润"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_LEADERSTOCKALTER",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EXEC",
+      "relation_type": "ETL",
+      "description": "高管持股变动表提供高管持股变动信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EXEC",
+        "key_fields": "ALTERNATIONREASONDESC,ALTERNATIONDATE,LEADERNAME,STOCKHOLDER,HOLDSUMAFTERALTER",
+        "usage": "高管持股变动记录"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBLEADSTOCKALTER",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EXEC",
+      "relation_type": "ETL",
+      "description": "科创板高管持股变动表提供科创板高管持股变动信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EXEC",
+        "key_fields": "ALTERNATIONREASONDESC,ALTERNATIONDATE,LEADERNAME,STOCKHOLDER,HOLDSUMAFTERALTER",
+        "usage": "科创板高管持股变动"
+      }
+    }
+  ]
+}

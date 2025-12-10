@@ -22,10 +22,10 @@ const AppLayout = () => {
   const navItems = [
     { key: 'home', label: '仪表板', icon: Square3Stack3DIcon, path: '/' },
     { key: 'tables', label: '数据表管理', icon: TableCellsIcon, path: '/tables' },
-    { key: 'search', label: '搜索与血缘', icon: MagnifyingGlassIcon, path: '/lineage' },
+    { key: 'search', label: '血缘管理', icon: MagnifyingGlassIcon, path: '/lineage-management' },
     { key: 'sources', label: '数据源管理', icon: ShareIcon, path: '/data-sources' },
     { key: 'import', label: '数据导入', icon: DocumentArrowDownIcon, path: '/import' },
-    { key: 'analytics', label: '数据分析', icon: ChartBarIcon, path: '/analytics' },
+    { key: 'analytics', label: '血缘关系分析', icon: ChartBarIcon, path: '/analytics' },
     { key: 'settings', label: '系统设置', icon: Cog6ToothIcon, path: '/settings' },
   ];
 

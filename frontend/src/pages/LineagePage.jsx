@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, Tabs, Select, Button, Input, message, Spin, Modal, Form, Table, AutoComplete, Radio } from 'antd';
+import { Card, Tabs, Select, Button, Input, message, Spin, AutoComplete, Radio } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { tableMetadataApi, lineageApi } from '../services/api';
@@ -27,11 +27,6 @@ const LineagePage = () => {
     column: null
   });
   const [activeTab, setActiveTab] = useState('table');
-  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
-  const [currentRelation, setCurrentRelation] = useState(null);
-  const [tableLineageList, setTableLineageList] = useState([]);
-  const [columnLineageList, setColumnLineageList] = useState([]);
-  const [form] = Form.useForm();
 
   // LineageGraph组件的ref，用于调用其导出和视图控制方法
   const lineageGraphRef = useRef(null);
@@ -359,33 +354,7 @@ const LineagePage = () => {
     }
   };
 
-  // 获取表级血缘关系列表
-  const fetchTableLineageList = async () => {
-    try {
-      setLoading(true);
-      const response = await lineageApi.getAllTableRelations({ page: 1, page_size: 100 });
-      console.log('获取表级血缘关系列表响应:', response);
-      setTableLineageList(Array.isArray(response) ? response : response.data || []);
-    } catch (error) {
-      message.error('获取表级血缘关系列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 获取列级血缘关系列表
-  const fetchColumnLineageList = async () => {
-    try {
-      setLoading(true);
-      const response = await lineageApi.getAllColumnRelations({ page: 1, page_size: 100 });
-      setColumnLineageList(Array.isArray(response) ? response : response.data || []);
-    } catch (error) {
-      message.error('获取列级血缘关系列表失败');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  
   // 转换数据格式以适配Cytoscape
   const transformGraphData = (data) => {
     console.log('transformGraphData 被调用，输入数据:', data);
@@ -472,8 +441,6 @@ const LineagePage = () => {
     
     if (tab === 'table') {
       console.log('切换到表级血缘视图');
-      fetchTableLineageList();
-      
       // 不需要重新获取数据，直接使用已保存的graphData
       if (selectedTables.table && !graphData.table) {
         console.log(`已选中表: ${selectedTables.table.id} - ${selectedTables.table.name}，但没有保存的graphData，调用fetchTableLineageGraph获取数据`);
@@ -481,8 +448,6 @@ const LineagePage = () => {
       }
     } else if (tab === 'column') {
       console.log('切换到列级血缘视图');
-      fetchColumnLineageList();
-      
       // 不需要重新获取数据，直接使用已保存的graphData
       if (selectedTables.column && selectedColumn && !graphData.column) {
         console.log(`已选中表和列，但没有保存的graphData，调用fetchColumnLineageGraph获取数据`);
@@ -491,34 +456,18 @@ const LineagePage = () => {
         console.log(`已选中表: ${selectedTables.column.id} - ${selectedTables.column.name}，调用fetchTableColumns获取列信息`);
         fetchTableColumns(selectedTables.column.id);
       }
-    } else if (tab === 'list') {
-      console.log('切换到血缘关系列表视图');
-      fetchTableLineageList();
-      fetchColumnLineageList();
     }
     console.log('===== 视图切换结束 =====');
   };
 
-  // 查看血缘关系详情
-  const showRelationDetail = (relation) => {
-    setCurrentRelation(relation);
-    form.setFieldsValue({
-      relationType: relation.relation_type,
-      description: relation.description,
-      details: JSON.stringify(relation.transformation_details || {}, null, 2)
-    });
-    setIsDetailModalVisible(true);
-  };
-
+  
   // 初始化
   useEffect(() => {
     console.log('===== 组件初始化开始 =====');
     console.log('开始获取初始化数据');
     fetchTables();
-    fetchTableLineageList();
-    fetchColumnLineageList();
     console.log('初始化数据获取函数调用完成');
-    
+
     return () => {
       console.log('===== 组件清理开始 =====');
       // 清理Cytoscape相关状态
@@ -568,98 +517,7 @@ const LineagePage = () => {
     console.log('selectedTables状态:', selectedTables);
   }, [selectedTables]);
 
-  // 表级血缘关系表格列
-  const tableLineageColumns = [
-    {
-      title: '源表',
-      dataIndex: 'source_tables',
-      key: 'source_tables',
-      render: (sourceTables) => {
-        if (!Array.isArray(sourceTables)) return '--';
-        return sourceTables.map(table => table.name).join(', ');
-      }
-    },
-    {
-      title: '目标表',
-      dataIndex: ['target_table', 'name'],
-      key: 'target_table_name'
-    },
-    {
-      title: '关系类型',
-      dataIndex: 'relation_type',
-      key: 'relation_type'
-    },
-    {
-      title: '描述',
-      dataIndex: 'description',
-      key: 'description',
-      ellipsis: true
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Button type="link" onClick={() => showRelationDetail(record)}>
-          查看详情
-        </Button>
-      )
-    }
-  ];
-
-  // 列级血缘关系表格列
-  const columnLineageColumns = [
-    {
-      title: '源表',
-      dataIndex: ['source_column', 'table', 'name'],
-      key: 'source_table_name'
-    },
-    {
-      title: '源列',
-      dataIndex: ['source_column', 'name'],
-      key: 'source_column_name'
-    },
-    {
-      title: '目标表',
-      dataIndex: ['target_column', 'table', 'name'],
-      key: 'target_table_name'
-    },
-    {
-      title: '目标列',
-      dataIndex: ['target_column', 'name'],
-      key: 'target_column_name'
-    },
-    {
-      title: '转换规则',
-      dataIndex: 'transformation_details',
-      key: 'transformation_details',
-      ellipsis: true,
-      render: (details) => {
-        if (!details) return '--';
-        try {
-          const parsedDetails = typeof details === 'string' ? JSON.parse(details) : details;
-          // 尝试获取转换规则，如果没有则返回JSON字符串
-          if (parsedDetails && typeof parsedDetails === 'object') {
-            // 优先返回转换规则，如果没有则返回描述或类型
-            return parsedDetails.rule || parsedDetails.description || parsedDetails.type || JSON.stringify(parsedDetails, null, 2);
-          }
-          return details;
-        } catch (e) {
-          console.error('解析转换规则失败:', e);
-          return details;
-        }
-      }
-    },
-    {
-      title: '操作',
-      key: 'action',
-      render: (_, record) => (
-        <Button type="link" onClick={() => showRelationDetail(record)}>
-          查看详情
-        </Button>
-      )
-    }
-  ];
-
+  
   return (
     <Card className="page-card">
       <div className="page-header">
@@ -869,51 +727,7 @@ const LineagePage = () => {
             )}
           </div>
         </TabPane>
-        
-        <TabPane tab="血缘关系列表" key="list">
-          <Tabs defaultActiveKey="table">
-            <TabPane tab="表级血缘列表" key="table">
-              <Table
-                columns={tableLineageColumns}
-                dataSource={tableLineageList}
-                rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-              />
-            </TabPane>
-            <TabPane tab="列级血缘列表" key="column">
-              <Table
-                columns={columnLineageColumns}
-                dataSource={columnLineageList}
-                rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10 }}
-              />
-            </TabPane>
-          </Tabs>
-        </TabPane>
       </Tabs>
-
-      {/* 血缘关系详情模态框 */}
-      <Modal
-        title="血缘关系详情"
-        open={isDetailModalVisible}
-        onCancel={() => setIsDetailModalVisible(false)}
-        footer={null}
-        width={600}
-      >
-        <Form form={form} layout="vertical">
-          <Form.Item label="关系类型" name="relationType">
-            <Input disabled />
-          </Form.Item>
-          <Form.Item label="描述" name="description">
-            <TextArea rows={4} disabled />
-          </Form.Item>
-          <Form.Item label="详细信息" name="details">
-            <TextArea rows={6} disabled />
-          </Form.Item>
-        </Form>
-      </Modal>
       
       {/* Cytoscape节点详情抽屉 */}
       <LineageDrawer

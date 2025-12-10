@@ -1,0 +1,108 @@
+{
+  "lineages": [
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "SECUMAIN",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "证券主表数据通过ETL过程生成基础信息表的股票基础信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "transformation_logic": "SECUCODE, SECUMARKET, INNERCODE, COMPANYCODE等字段映射到JSON基础信息",
+        "business_context": "从证券主表提取股票代码、市场、公司代码等基础信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "NQ_SECUMAIN",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "新三板证券主表数据通过ETL过程生成基础信息表的新三板股票基础信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "transformation_logic": "新三板股票信息合并到统一的基础信息结构",
+        "business_context": "统一处理沪深京A股和新三板股票的基础信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STOCKARCHIVES",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_BASIC",
+      "relation_type": "ETL",
+      "description": "股票档案表数据通过ETL过程生成基础信息表的公司档案信息",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_BASIC_P1",
+        "transformation_logic": "CHINAME, OFFICEADDR, CONTACTTEL, WEBSITE等字段映射到JSON档案信息",
+        "business_context": "提取公司名称、办公地址、联系方式等档案信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_DIVIDEND",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DAF",
+      "relation_type": "ETL",
+      "description": "股票分红表数据通过ETL过程生成分红融资表的分红记录",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_DAF",
+        "transformation_logic": "TOACCOUNTDATE, TOTALCASHDIVICOMRMB等字段映射到JSON分红信息",
+        "business_context": "按年份统计股票的现金分红记录"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STAFF",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EMP_BENEFIT",
+      "relation_type": "ETL",
+      "description": "员工信息表数据通过ETL过程生成员工福利表的员工效益数据",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EMP_BENEFIT",
+        "transformation_logic": "EMPLOYEESUM, CLASSFIEDMETHOD, TYPECODE等字段映射到JSON员工福利信息",
+        "business_context": "计算人均创利、人均薪酬、教育背景分布等员工福利指标"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_EXECUTIVESHOLDINGS",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_EXEC",
+      "relation_type": "ETL",
+      "description": "高管持股表数据通过ETL过程生成高管信息表的高管薪酬持股数据",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_EXEC",
+        "transformation_logic": "LEADERNAME, SHAREAMOUNT, ANNUALREWARD等字段映射到JSON高管信息",
+        "business_context": "统计董事会和经营层的薪酬、持股比例、职位信息"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_ASHAREIPO",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DEV",
+      "relation_type": "ETL",
+      "description": "A股IPO表数据通过ETL过程生成发展历程表的IPO事件记录",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_DEV",
+        "transformation_logic": "LISTDATE, ISSUEPRICE, TOTALISSUEMV等字段映射到JSON发展历程",
+        "business_context": "记录A股的IPO发行价、募资额、市盈率等关键发展节点"
+      }
+    },
+    {
+      "source_db_name": "聚源数据库",
+      "source_table_name": "LC_STIBIPOISSUE",
+      "target_db_name": "F10数据库",
+      "target_table_name": "T_F10_BASIC_DEV",
+      "relation_type": "ETL",
+      "description": "科创板IPO表数据通过ETL过程生成发展历程表的科创板IPO事件记录",
+      "relation_details": {
+        "etl_process": "P_BUILD_T_F10_BASIC_DEV",
+        "transformation_logic": "科创板IPO信息统一处理到发展历程结构",
+        "business_context": "记录科创板的IPO发行信息，与A股IPO统一管理"
+      }
+    }
+  ]
+}
